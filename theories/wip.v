@@ -2,10 +2,6 @@ Require Import HoTT HoTT_axioms.
 
 Set Universe Polymorphism.
 
-Definition to_R {A B} {R : A -> B -> Type} {f : A -> B}
-           (r : forall x, R x (f x)) :
-  forall x y, f x = y -> R x y :=
-  fun x y e => transport_eq (fun y => R x y) e (r x). 
 
 Definition transport_sigma_1 A (P : A -> Type) Q x y (e : x = y) X :
   (transport_eq (fun x => {y : P x & Q x y}) e X).1  =
@@ -138,13 +134,29 @@ Defined.
 
 Axiom IsEquiv_IsHProp : forall A B (f : A -> B), IsHProp (IsEquiv f).
 
-Definition IsFunctional {A B} (R : A -> B -> Type) := 
-  { f : A -> B & {r : forall x, R x (f x) & forall x y, IsEquiv (to_R r x y)}}.
+Definition to_R {A B} {R : A -> B -> Type} {f : A -> B}
+           (r : forall x, R x (f x)) :
+  forall x y, f x = y -> R x y :=
+  fun x y e => transport_eq (fun y => R x y) e (r x). 
 
-Definition foo A B (R : A -> B -> Type) : IsHProp (IsFunctional R).
+Class IsFun {A B} (R : A -> B -> Type) := 
+  { funR : A -> B ;
+    center : forall x, R x (funR x);
+    IsEquiv_center :> forall x y, IsEquiv (to_R center x y) }.
+
+Arguments funR {_ _ _} _ _.
+Arguments center {_ _ _} _ _.
+
+Definition IsFun_alt {A B} (R : A -> B -> Type) := 
+  { funR : A -> B &
+    { center : forall x, R x (funR x) &
+                         forall x y, IsEquiv (to_R center x y) }}.
+
+
+
+Definition IsFunIsHProp A B (R : A -> B -> Type) : IsHProp (IsFun_alt R).
 Proof.
-  apply IsIrr_to_IsHProp.
-  intros [f [r Hfr] ] [f' [r' Hfr'] ].
+  apply IsIrr_to_IsHProp. intros [f [r HR] ] [f' [ r' HR'] ]. 
   apply path_sigma_uncurried; cbn. unshelve eexists.
   - apply funext. intro x. exact (e_inv (to_R r x (f' x)) (r' x)).
   - cbn. apply path_sigma_uncurried. cbn. unshelve eexists.
@@ -163,39 +175,43 @@ Defined.
 
 Definition sym {A B} (R : A -> B -> Type) := fun b a => R a b. 
 
-Definition bar A B (R : A -> B -> Type) : IsHProp (IsFunctional (sym R)) :=
-  foo B A (sym R).
+Definition IsFunSymIsHProp A B (R : A -> B -> Type) : IsHProp (IsFun_alt (sym R)) :=
+  IsFunIsHProp B A (sym R).
 
-Definition toto A B (R : A -> B -> Type) :
-  forall (f : IsFunctional R), IsFunctional (sym R) -> IsEquiv (f.1).
+Class IsWeakEquiv {A B} (R : A -> B -> Type) :=
+  { isFun :> IsFun R;
+    isFunSym :> IsFun (sym R) }.
+                 
+Definition IsWeakEquiv_IsEquiv A B (R : A -> B -> Type) :
+  forall (f : IsWeakEquiv R), IsEquiv (isFun.(funR)).
 Proof.
-  destruct f as [f [rf rfe] ]. intros [g [rg rge] ].
+  destruct f as [f g].  
   unshelve eapply isequiv_adjointify.
-  - exact g.
-  - intro x. exact (e_inv (@to_R  _ _ (sym R) _ rg (f x) x) (rf x)). 
-  - intro y. exact (e_inv (to_R rf (g y) y) (rg y)). 
+  - exact g.(funR).
+  - intro x. exact (e_inv (@to_R  _ _ (sym R) _ g.(center) (f.(funR) x) x) (f.(center) x)). 
+  - intro y. exact (e_inv (to_R f.(center) (g.(funR) y) y) (g.(center) y)). 
 Defined. 
 
 Definition IsFun_forall_ (A A' : Type) (eA : A -> A' -> Type)
-           (H : IsFunctional (sym eA)) 
+           (H : IsFun (sym eA)) 
 (B : A -> Type) (B' : A' -> Type) (eB : forall a a', eA a a'
-                                                     -> {R : B a -> B' a' -> Type & IsFunctional R}) :
-  {R : (forall x : A, B x) -> (forall x : A', B' x) -> Type & IsFunctional R}.
+                                                     -> {R : B a -> B' a' -> Type & IsFun R}) :
+  {R : (forall x : A, B x) -> (forall x : A', B' x) -> Type & IsFun R}.
 Proof.
   unshelve eexists.
   - exact (fun f g => forall x y (e:eA x y), (eB x y e).1 (f x) (g y)).
   - unshelve econstructor.
-    + intros f x. apply ((eB (H.1 x) x (H.2.1 x)).2.1 (f (H.1 x))).
-    + unshelve econstructor.
-      * intros f a a' ea. pose ((eB a a' ea).2.2.1 (f a)).
-        assert (((eB a a' ea) .2) .1 (f a) = ((eB (H .1 a') a' ((H .2) .1 a')) .2) .1 (f (H .1 a'))).
-        pose (e_inv (IsEquiv := H.2.2 a' a) _ ea).
-        pose (e_retr (IsEquiv := H.2.2 a' a) _ ea).
-        rewrite <- e0.
-        change (((eB a a' (to_R (H .2) .1 a' a e)) .2) .1 (f a) =
-  ((eB (H .1 a') a' ((H .2) .1 a')) .2) .1 (f (H .1 a'))).
-        destruct e. reflexivity.
-        rewrite <- X. exact p.
+    + intros f x. apply ((eB (H.(funR) x) x (H.(center) x)).2.(funR) (f (H.(funR) x))).
+    + intros f a a' ea.
+      (* pose ((eB a a' ea).2.2.1 (f a)). *)
+      (* assert (((eB a a' ea) .2) .1 (f a) = ((eB (H .1 a') a' ((H .2) .1 a')) .2) .1 (f (H .1 a'))). *)
+      (* pose (e_inv (IsEquiv := H.2.2 a' a) _ ea). *)
+      (* pose (e_retr (IsEquiv := H.2.2 a' a) _ ea). *)
+      (* rewrite <- e0. *)
+      (* change (((eB a a' (to_R (H .2) .1 a' a e)) .2) .1 (f a) = *)
+      (*         ((eB (H .1 a') a' ((H .2) .1 a')) .2) .1 (f (H .1 a'))). *)
+      (* destruct e. reflexivity. *)
+      (* rewrite <- X. exact p. *)
       *
 Abort. 
   
