@@ -233,7 +233,7 @@ Definition transport_double' A B (P : A -> B -> Type) x y (e : x = y) g (f : for
 Defined.
 
 Definition path_sigma_uncurried {A : Type} (P : A -> Type) (u v : sigT P)
-           (pq : {p : u.1 = v.1 & u.2 = p^ # v.2})
+           (pq : {p : u.1 = v.1 & p # u.2 = v.2})
 : u = v.
 Proof.
   destruct pq as [p q]. destruct u, v. simpl in *. destruct p.
