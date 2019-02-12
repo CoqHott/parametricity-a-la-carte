@@ -247,6 +247,39 @@ Proof.
         exact (IHell'..2).
 Defined.
 
+Definition transport_listR_cons_sym A B (RA : A -> B -> Type)
+           (a a' :A) b (la la': list A ) (l:list B) (h:a=a') (e:la=la')
+  (E: RA a b) (E': listR RA la l):
+   transport_eq
+    (fun X => listR RA X (b::l))
+    (ap2 cons h e) (listR_cons _ E E')  =
+  listR_cons RA (transport_eq (fun X => RA X _) h E)
+                (transport_eq (fun X : list A => listR RA X l) e E').
+  destruct h, e. reflexivity.
+Defined.
+
+Definition IsFunSym_list (A A' : Type) (eA : A -> A' -> Type)
+           (FA : IsFun (sym eA)) : IsFun (sym (listR eA)).
+Proof.
+  intro l. unshelve econstructor.
+  - unshelve eexists.
+    + exact (list_rec A' (fun _ => list A) []
+                      (fun a' _ l' => cons (funR FA a') l') l).
+    + induction l.
+      * exact (listR_nil _). 
+      * eapply listR_cons; try assumption.
+        exact (center FA a). 
+  - intros [l' ell'].  
+    induction ell'; cbn.
+    + reflexivity.
+    + apply path_sigma_uncurried. unshelve eexists; cbn in *.
+      * apply ap2. exact (((FA b).2 (a ;r))..1). exact (IHell'..1).
+      * unfold sym in *.
+        rewrite transport_listR_cons_sym. apply ap2.
+        exact (((FA b).2 (a ;r))..2).
+        exact (IHell'..2).
+Defined.
+
 Definition FP_list (A A' : Type) (eA : A ⋈ A'):
   list A ⋈ list A'.
 Proof.
@@ -254,7 +287,5 @@ Proof.
   exact (listR (_Rel eA)).
   split. 
   apply IsFun_list; typeclasses eauto.
-  pose (IsFun_list A' A (sym rel) _).
-  cbn in i. unfold sym, rel in *.
-  (* by parametricity ? *)
-  
+  apply IsFunSym_list; typeclasses eauto.
+Defined.   
