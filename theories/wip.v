@@ -64,6 +64,20 @@ Proof.
   econstructor. apply IsFunRf. assumption.
 Defined.
 
+
+Definition IsFun_sym A A' (R R': A -> A' -> Type) :
+  (forall a a', R a a' ≃ R' a a') -> IsFun R -> IsFun R'.
+Proof.
+  intros equiv FR. unshelve econstructor.
+  - exists (funR FR x). apply equiv. apply center.
+  - intros [a' r']. apply path_sigma_uncurried. unshelve eexists; cbn. 
+    + exact (((FR x).2 (a'; e_inv' (equiv _ _) r'))..1).
+    + pose (((FR x).2 (a'; e_inv' (equiv _ _) r'))..2).
+      cbn in e. set ((FR x) .2 (a'; e_inv' (equiv x a') r') ..1) in *.
+      cbn in *. clearbody e e0. destruct e0. cbn in *.
+      apply Move_equiv_equiv. exact e.
+Defined.
+
 Class Rel A B := rel : A -> B -> Type.
 
 Hint Mode Rel ! ! : typeclass_instances.
@@ -180,7 +194,18 @@ Defined.
 Hint Extern 1 (Rel (forall x:?A, _) (forall x:?A', _)) =>
   refine (@FRForall A A' _ _ _ _); cbn in *; intros : typeclass_instances.
 
-Require Import ssreflect. 
+Definition Forall_sym_sym
+           {A A'} {B : A -> Type} {B' : A' -> Type} (RA : Rel A A') 
+           (RB: forall x y (H: x ≈ y), Rel (B x) (B' y)) :
+  forall f g, FRForall RA RB f g ≃ sym (FRForall (sym RA) (fun x y e => sym (RB y x e))) f g.  
+Proof.
+  intros. unshelve econstructor; cbn. 
+  compute; intros; auto. 
+  unshelve eapply isequiv_adjointify.
+  - compute; intros; auto. 
+  - reflexivity.
+  - reflexivity.
+Defined.   
 
 Definition FP_forall (A A' : Type) (eA : A ⋈ A')
            (B : A -> Type) (B' : A' -> Type) (eB : B ≈ B') :
@@ -191,10 +216,9 @@ Proof.
   intros. eapply eB. typeclasses eauto.
   split. 
   apply IsFun_forall; typeclasses eauto.
-  pose (IsFun_forall A' A  B' B (sym rel)
-                     (fun a' a e => sym (_Rel (eB a a' e)))).
-  (* the sym case does not seem to be a direct application ... *)
-  cheat.
+  eapply IsFun_sym. eapply Forall_sym_sym. 
+  apply IsFun_forall. destruct eA. destruct _REquiv0. assumption. 
+  intros. destruct (eB a' a e). destruct _REquiv0. assumption.
 Defined.
 
 Inductive list (A : Type) : Type :=
@@ -247,38 +271,18 @@ Proof.
         exact (IHell'..2).
 Defined.
 
-Definition transport_listR_cons_sym A B (RA : A -> B -> Type)
-           (a a' :A) b (la la': list A ) (l:list B) (h:a=a') (e:la=la')
-  (E: RA a b) (E': listR RA la l):
-   transport_eq
-    (fun X => listR RA X (b::l))
-    (ap2 cons h e) (listR_cons _ E E')  =
-  listR_cons RA (transport_eq (fun X => RA X _) h E)
-                (transport_eq (fun X : list A => listR RA X l) e E').
-  destruct h, e. reflexivity.
-Defined.
-
-Definition IsFunSym_list (A A' : Type) (eA : A -> A' -> Type)
-           (FA : IsFun (sym eA)) : IsFun (sym (listR eA)).
+Definition listR_sym_sym A A' (R : A -> A' -> Type) :
+  forall l l', listR R l l' ≃ sym (listR (sym R)) l l'.  
 Proof.
-  intro l. unshelve econstructor.
-  - unshelve eexists.
-    + exact (list_rec A' (fun _ => list A) []
-                      (fun a' _ l' => cons (funR FA a') l') l).
-    + induction l.
-      * exact (listR_nil _). 
-      * eapply listR_cons; try assumption.
-        exact (center FA a). 
-  - intros [l' ell'].  
-    induction ell'; cbn.
-    + reflexivity.
-    + apply path_sigma_uncurried. unshelve eexists; cbn in *.
-      * apply ap2. exact (((FA b).2 (a ;r))..1). exact (IHell'..1).
-      * unfold sym in *.
-        rewrite transport_listR_cons_sym. apply ap2.
-        exact (((FA b).2 (a ;r))..2).
-        exact (IHell'..2).
-Defined.
+  intros l l'. unshelve econstructor.
+  induction 1; constructor; assumption.
+  unshelve eapply isequiv_adjointify.
+  - induction 1; constructor; assumption.
+  - intro e; induction e; cbn. reflexivity.
+    apply ap2; try reflexivity; assumption.
+  - intro e; induction e; cbn. reflexivity.
+    apply ap2; try reflexivity; assumption.
+Defined.   
 
 Definition FP_list (A A' : Type) (eA : A ⋈ A'):
   list A ⋈ list A'.
@@ -287,5 +291,9 @@ Proof.
   exact (listR (_Rel eA)).
   split. 
   apply IsFun_list; typeclasses eauto.
-  apply IsFunSym_list; typeclasses eauto.
+  eapply IsFun_sym. eapply listR_sym_sym. 
+  apply IsFun_list. destruct eA. destruct _REquiv0.
+  exact isWFunSym0. 
 Defined.   
+
+      
