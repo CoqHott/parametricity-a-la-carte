@@ -70,6 +70,10 @@ Definition IsHProp_inhab_isContr A {H:A -> IsContr A} : IsHProp A.
   exact (@path_contr _ (H x) _ _).
 Defined.
 
+Definition IsHPropIsContr {A} : IsHProp (IsContr A).
+Admitted. 
+
+
 (* Preservation of homotopy level *)
 
 Definition contr_equiv A B (f : A -> B)
@@ -139,79 +143,138 @@ Definition to_R {A B} {R : A -> B -> Type} {f : A -> B}
   forall x y, f x = y -> R x y :=
   fun x y e => transport_eq (fun y => R x y) e (r x). 
 
-Class IsFun {A B} (R : A -> B -> Type) := 
-  { funR : A -> B ;
-    center : forall x, R x (funR x);
-    IsEquiv_center :> forall x y, IsEquiv (to_R center x y) }.
+(* Class IsFun {A B} (R : A -> B -> Type) :=  *)
+(*   { funR : A -> B ; *)
+(*     center : forall x, R x (funR x); *)
+(*     IsEquiv_center :> forall x y, IsEquiv (to_R center x y) }. *)
 
-Arguments funR {_ _ _} _ _.
-Arguments center {_ _ _} _ _.
+(* Arguments funR {_ _ _} _ _. *)
+(* Arguments center {_ _ _} _ _. *)
+(* Arguments IsEquiv_center {_ _ _} _ _. *)
 
-Definition IsFun_alt {A B} (R : A -> B -> Type) := 
-  { funR : A -> B &
-    { center : forall x, R x (funR x) &
-                         forall x y, IsEquiv (to_R center x y) }}.
+Class IsFun {A B} (R : A -> B -> Type) := isFun : forall x, IsContr {y:B & R x y} .
 
+Arguments isFun {_ _ _} _.
 
+Definition funR {A B R} : IsFun R -> A -> B := fun H x => (H.(isFun) x).1.1.
 
-Definition IsFunIsHProp A B (R : A -> B -> Type) : IsHProp (IsFun_alt R).
-Proof.
-  apply IsIrr_to_IsHProp. intros [f [r HR] ] [f' [ r' HR'] ]. 
-  apply path_sigma_uncurried; cbn. unshelve eexists.
-  - apply funext. intro x. exact (e_inv (to_R r x (f' x)) (r' x)).
-  - cbn. apply path_sigma_uncurried. cbn. unshelve eexists.
-    + apply funext. intro x. cbn.
-      rewrite (transport_sigma_1 _ (fun f0 => forall x0,  R x0 (f0 x0))
-                                 (fun f0 r0 => 
-                                    forall (x0 : A) (y : B), IsEquiv (to_R r0 x0 y))).
-      cbn. revert x. apply apD10. apply (transport_inv  (fun f0 : A -> B => forall x0 : A, R x0 (f0 x0))).
-      apply funext. intro x. 
-      rewrite transport_funext_aux.
-      exact (e_retr (to_R r x (f' x)) (r' x)).
-    + eapply IsHProp_to_IsIrr. unshelve eapply IsTrunc_Forall.
-      apply funext. intro x. unshelve eapply IsTrunc_Forall.
-      apply funext. intro y. apply IsEquiv_IsHProp. 
+(* Coercion funR : IsFun >-> Funclass. *)
+
+Definition center {A B} {R : A -> B -> Type} (F : IsFun R) :
+  forall x, R x (funR F x) := fun x => (F x).1.2.
+
+Definition IsFunIsHProp A B (R : A -> B -> Type) : IsHProp (IsFun R).
+  unfold IsFun. unshelve eapply IsTrunc_Forall. apply funext. intro x. 
+  eapply IsHPropIsContr.
 Defined. 
 
 Definition sym {A B} (R : A -> B -> Type) := fun b a => R a b. 
 
-Definition IsFunSymIsHProp A B (R : A -> B -> Type) : IsHProp (IsFun_alt (sym R)) :=
+Definition IsFunSymIsHProp A B (R : A -> B -> Type) : IsHProp (IsFun (sym R)) :=
   IsFunIsHProp B A (sym R).
 
 Class IsWeakEquiv {A B} (R : A -> B -> Type) :=
-  { isFun :> IsFun R;
-    isFunSym :> IsFun (sym R) }.
+  { isWFun :> IsFun R;
+    isWFunSym :> IsFun (sym R) }.
                  
 Definition IsWeakEquiv_IsEquiv A B (R : A -> B -> Type) :
-  forall (f : IsWeakEquiv R), IsEquiv (isFun.(funR)).
+  forall (f : IsWeakEquiv R), IsEquiv (funR isWFun).
 Proof.
   destruct f as [f g].  
   unshelve eapply isequiv_adjointify.
-  - exact g.(funR).
-  - intro x. exact (e_inv (@to_R  _ _ (sym R) _ g.(center) (f.(funR) x) x) (f.(center) x)). 
-  - intro y. exact (e_inv (to_R f.(center) (g.(funR) y) y) (g.(center) y)). 
+  - exact (funR g).
+  - intro x. pose (b := (funR f) x). pose (r := (center f) x).
+    cbn. pose ((g b).2 (x;r)). exact (e..1).
+  - intro y. pose (a := (funR g) y). pose (r := (center g) y).
+    cbn. pose ((f a).2 (y;r)). exact (e..1).
 Defined. 
 
-Definition IsFun_forall_ (A A' : Type) (eA : A -> A' -> Type)
-           (H : IsFun (sym eA)) 
+Definition IsFunRf A B (f : A -> B) : IsFun (fun a b => f a = b).
+Proof.
+  intro a. unshelve econstructor. exists (f a). reflexivity.
+  intros [b e]. apply path_sigma_uncurried. unshelve eexists.
+  exact e. cbn. apply transport_paths_r.
+Defined. 
+
+Definition transport_forall_cst {A B} 
+           (P : A -> B -> Type) b b' (e: b = b')
+           (v : forall x, P x b) 
+            : (transport_eq (fun y => forall x, P x y) e v)
+            = fun x => transport_eq (fun y => P x y) e (v x).
+Proof.
+  destruct e; reflexivity. 
+Defined.
+
+
+Definition transport_sigma {A : Type} {B : A -> Type} {C : forall a:A, B a -> Type}
+           {x1 x2 : A} (p : x1 = x2) (yz : { y : B x1 & C x1 y })
+: transport_eq (fun x => { y : B x & C x y }) p yz
+  = (p # yz.1 ; transportD _ _ p yz.1 yz.2).
+Proof.
+  destruct p.  destruct yz as [y z]. reflexivity.
+Defined.
+
+Definition transport_sigma' {A B : Type} {C : A -> B -> Type}
+           {x1 x2 : A} (p : x1 = x2) (yz : { y : B & C x1 y })
+: transport_eq (fun x => { y : B & C x y }) p yz =
+  (yz.1 ; transport_eq (fun x => C x yz.1) p yz.2).
+Proof.
+  destruct p. destruct yz. reflexivity.
+Defined.
+
+(* Definition transport_on_sigma {A: Type} {B : A -> Type} *)
+(*            (P :  { x : A & B x} -> Type) *)
+(*            {x1 x2 : { x : A & B x}} (e : x1 = x2) *)
+(*            yz *)
+(*   : transport_eq (fun X : { x : A & B x} => P X) e yz = *)
+(*     transport_eq (fun y => P (x1.1;y)) (e..2) *)
+(*     (transport_eq (fun x => forall y: B x, P (x;y)) (e..1) yz). *)
+(*   (yz.1 ; transport_eq (fun x => C x yz.1) p yz.2). *)
+(* Proof. *)
+(*   destruct p. destruct yz. reflexivity. *)
+(* Defined. *)
+
+Definition transport_pr1_path A (B:A->Type) 
+           (X Y : {a:A & B a}) (e : X = Y) :
+  transport_eq B (e..1) X.2 = Y .2. 
+Proof. 
+  destruct e. reflexivity.
+Defined. 
+
+Definition IsFun_forall (A A' : Type) (eA : A -> A' -> Type)
+           (FAsym : IsFun (sym eA)) 
 (B : A -> Type) (B' : A' -> Type) (eB : forall a a', eA a a'
                                                      -> {R : B a -> B' a' -> Type & IsFun R}) :
   {R : (forall x : A, B x) -> (forall x : A', B' x) -> Type & IsFun R}.
 Proof.
   unshelve eexists.
   - exact (fun f g => forall x y (e:eA x y), (eB x y e).1 (f x) (g y)).
-  - unshelve econstructor.
-    + intros f x. apply ((eB (H.(funR) x) x (H.(center) x)).2.(funR) (f (H.(funR) x))).
-    + intros f a a' ea.
-      (* pose ((eB a a' ea).2.2.1 (f a)). *)
-      (* assert (((eB a a' ea) .2) .1 (f a) = ((eB (H .1 a') a' ((H .2) .1 a')) .2) .1 (f (H .1 a'))). *)
-      (* pose (e_inv (IsEquiv := H.2.2 a' a) _ ea). *)
-      (* pose (e_retr (IsEquiv := H.2.2 a' a) _ ea). *)
-      (* rewrite <- e0. *)
-      (* change (((eB a a' (to_R (H .2) .1 a' a e)) .2) .1 (f a) = *)
-      (*         ((eB (H .1 a') a' ((H .2) .1 a')) .2) .1 (f (H .1 a'))). *)
-      (* destruct e. reflexivity. *)
-      (* rewrite <- X. exact p. *)
-      *
-Abort. 
+  - intro f.
+    unshelve econstructor.
+    + unshelve eexists.
+      * intros x. apply ((eB ((funR FAsym) x) x (FAsym.(center) x)).2.(funR) (f (FAsym.(funR) x))).
+      * intros a a' ea. cbn. pose (e := (FAsym a').2 (_ ; ea)).
+        apply (transport_eq (fun X => (eB a a' ea) .1 (f a)
+                                                  (((eB X .1 a' X .2) .2 (f X .1)).1) .1) e^).
+        exact ((eB a a' ea).2.(center) (f a)).
+    + intros [g efg]. cbn in *. eapply path_sigma_uncurried.
+      unshelve eexists. cbn. apply funext.
+      * intros a'.
+        exact ((((eB (funR FAsym a') a' (center FAsym a')).2 (f (funR FAsym a'))).2 (g a'; efg _ a' _))..1).
+      * cbn.  rewrite transport_forall_cst.
+        apply funext; intro a; apply funext; intro a'; apply funext ; intro e.
+        rewrite (transport_funext_aux (fun y0 y  =>
+                                         forall (e0 : eA a y0), (eB a y0 e0) .1 (f a) y)).
+        rewrite transport_forall_cst.
+        set (T := (eB a a' e) .1 (f a)).
+        rewrite <- (transport_ap T ((fun X : {y : A & sym eA a' y} =>
+                                       (((eB X .1 a' X .2) .2 (f X .1)) .1) .1))).
+        rewrite <- transport_pp.
+        unfold center, funR, isFun.
+        set (isContrT := (eB a a' e) .2 (f a)).
+        destruct ((FAsym a') .2 (a; e))^. cbn.
+        change (transport_eq T (isContrT .2 (g a'; efg a a' e) ..1)
+                             (isContrT .1) .2 = efg a a' e).
+        apply transport_pr1_path. 
+Defined.
   
