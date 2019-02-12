@@ -245,7 +245,7 @@ Definition pr1_path {A} `{P : A -> Type} {u v : sigT P} (p : u = v) : u.1 = v.1 
 Notation "p ..1" := (pr1_path p) (at level 50).
 
 Definition pr2_path {A} `{P : A -> Type} {u v : sigT P} (p : u = v)
-  : u.2 = p..1^ # v.2.
+  : p..1 # u.2 =  v.2.
   destruct p. reflexivity. 
 Defined.
     
@@ -873,17 +873,17 @@ Proof.
 Defined. 
 
 
-Instance DecidableEq_Sigma A (B : A -> Type) `{DecidableEq A} `{forall a, DecidableEq (B a)} :
-  DecidableEq {a : A & B a}.
-Proof.
-  constructor. intros [a b] [a' b' ].
-  destruct (dec_paths a a').
-  - destruct e. destruct (dec_paths b b').
-    + apply inl. apply path_sigma_uncurried. exists eq_refl. exact e.
-    + apply inr; intro Hf; apply f. pose (Hf..2).
-      assert (Hf..1 = eq_refl). apply is_hset. rewrite X in e. exact e.
-  - apply inr; intro Hf; apply f. exact (Hf..1).
-Defined.
+(* Instance DecidableEq_Sigma A (B : A -> Type) `{DecidableEq A} `{forall a, DecidableEq (B a)} : *)
+(*   DecidableEq {a : A & B a}. *)
+(* Proof. *)
+(*   constructor. intros [a b] [a' b' ]. *)
+(*   destruct (dec_paths a a'). *)
+(*   - destruct e. destruct (dec_paths b b'). *)
+(*     + apply inl. apply path_sigma_uncurried. exists eq_refl. exact e. *)
+(*     + apply inr; intro Hf; apply f. pose (Hf..2). *)
+(*       assert (Hf..1 = eq_refl). apply is_hset. rewrite X in e. exact e. *)
+(*   - apply inr; intro Hf; apply f. exact (Hf..1). *)
+(* Defined. *)
                 
 Definition Move_equiv_equiv {A B} (e : A ≃ B) x y : (x = e_inv' e y) ≃ (e_fun e x = y).
 Proof.
