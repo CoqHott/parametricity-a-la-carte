@@ -947,3 +947,37 @@ Proof.
   destruct e. cbn. rewrite concat_refl. reflexivity.
 Defined.
 
+
+
+Definition transport_forall_cst {A B} 
+           (P : A -> B -> Type) b b' (e: b = b')
+           (v : forall x, P x b) 
+            : (transport_eq (fun y => forall x, P x y) e v)
+            = fun x => transport_eq (fun y => P x y) e (v x).
+Proof.
+  destruct e; reflexivity. 
+Defined.
+
+
+Definition transport_sigma {A : Type} {B : A -> Type} {C : forall a:A, B a -> Type}
+           {x1 x2 : A} (p : x1 = x2) (yz : { y : B x1 & C x1 y })
+: transport_eq (fun x => { y : B x & C x y }) p yz
+  = (p # yz.1 ; transportD _ _ p yz.1 yz.2).
+Proof.
+  destruct p.  destruct yz as [y z]. reflexivity.
+Defined.
+
+Definition transport_sigma' {A B : Type} {C : A -> B -> Type}
+           {x1 x2 : A} (p : x1 = x2) (yz : { y : B & C x1 y })
+: transport_eq (fun x => { y : B & C x y }) p yz =
+  (yz.1 ; transport_eq (fun x => C x yz.1) p yz.2).
+Proof.
+  destruct p. destruct yz. reflexivity.
+Defined.
+
+Definition transport_pr1_path A (B:A->Type) 
+           (X Y : {a:A & B a}) (e : X = Y) :
+  transport_eq B (e..1) X.2 = Y .2. 
+Proof. 
+  destruct e. reflexivity.
+Defined. 
