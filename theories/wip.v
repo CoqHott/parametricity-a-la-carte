@@ -247,3 +247,14 @@ Proof.
         exact (IHell'..2).
 Defined.
 
+Definition FP_list (A A' : Type) (eA : A ⋈ A'):
+  list A ⋈ list A'.
+Proof.
+  unshelve econstructor.
+  exact (listR (_Rel eA)).
+  split. 
+  apply IsFun_list; typeclasses eauto.
+  pose (IsFun_list A' A (sym rel) _).
+  cbn in i. unfold sym, rel in *.
+  (* by parametricity ? *)
+  
