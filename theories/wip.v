@@ -181,13 +181,14 @@ Definition Forall_sym_sym
            (RB: forall x y (H: x ≈ y), Rel (B x) (B' y)) :
   forall f g, FRForall RA RB f g ≃ sym (FRForall (sym RA) (fun x y e => sym (RB y x e))) f g.
 Proof.
-  intros. unshelve econstructor; cbn.
-  compute; intros; auto.
-  unshelve eapply isequiv_adjointify.
-  - compute; intros; auto.
+  intros. unshelve econstructor; cbn. 
+  compute; intros; auto. 
+  unshelve econstructor.
+  - compute; intros; auto. 
   - reflexivity.
   - reflexivity.
-Defined.
+  - reflexivity.
+Defined.   
 
 Definition FP_forall (A A' : Type) (eA : A ⋈ A')
            (B : A -> Type) (B' : A' -> Type) (eB : B ≈ B') :
@@ -233,8 +234,8 @@ Definition transport_listR_cons A B (RA : A -> B -> Type)
   destruct h, e. reflexivity.
 Defined.
 
-Definition IsFun_list (A A' : Type) (eA : A -> A' -> Type)
-           (FA : IsFun eA) : IsFun (listR eA).
+Definition IsFun_list (A A' : Type) (RA : A -> A' -> Type)
+           (FA : IsFun RA) : IsFun (listR RA).
 Proof.
   intro l. unshelve econstructor.
   - unshelve eexists.
