@@ -1,5 +1,5 @@
 Require Import ssreflect HoTT HoTT_axioms.
-Declare ML Module "paramcoq".
+(* Declare ML Module "paramcoq". *)
 
 Set Universe Polymorphism.
 
@@ -19,7 +19,7 @@ Arguments isFun {_ _ _} _.
 Arguments isWFun {_ _ _} _.
 Arguments isWFunSym {_ _ _} _.
 
-Definition funR {A B R} : IsFun R -> A -> B := fun H x => (H.(isFun) x).1.1.
+Definition funR {A B R} : IsFun R -> A -> B := fun H x => (isFun H x).1.1.
 
 Definition center {A B} {R : A -> B -> Type} (F : IsFun R) :
   forall x, R x (funR F x) := fun x => (F x).1.2.
@@ -52,6 +52,23 @@ Proof.
     cbn. pose ((f a).2 (y;r)). exact (e..1).
 Defined.
 
+Definition IsEquiv_IsWeakEquiv A B (f : A -> B) :
+  forall (e : IsEquiv f), IsWeakEquiv (fun a b => f a = b).
+Proof.
+  intros [g sect retr adj].
+  econstructor.   
+  - intros a. unshelve econstructor.
+    + exists (f a). reflexivity.
+    + intros [y ey]. apply path_sigma_uncurried. exists ey. 
+      apply transport_paths_r. 
+  - intros b. unshelve econstructor.
+    + exists (g b). compute. exact (retr b). 
+    + intros [a ea]. apply path_sigma_uncurried. compute in ea. 
+      exists ((ap g ea)^ @ sect a). unfold sym. cbn. 
+      rewrite transport_paths_Fl. destruct ea. cbn.
+      rewrite adj. apply inverse. apply inverse_left_inverse. 
+Defined. 
+      
 Definition IsFunRf A B (f : A -> B) : IsFun (fun a b => f a = b).
 Proof.
   intro a. unshelve econstructor. exists (f a). reflexivity.
