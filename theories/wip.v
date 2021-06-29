@@ -106,7 +106,7 @@ Notation "x ≈ y" := (rel x y) (at level 20).
 
 Class FR_Type A B :=
   { _Rel :> Rel A B;
-    _REquiv:> IsWeakEquiv rel;
+    _REquiv:> IsWeakEquiv (@rel _ _ _Rel);
   }.
 
 Infix "⋈" := FR_Type (at level 25).
@@ -180,12 +180,12 @@ Proof.
   intro f.
   unshelve econstructor.
   - unshelve eexists.
-    + intros x. apply ((eB ((funR eAsym) x) x (eAsym.(center) x)).(funR) (f (eAsym.(funR) x))).
+    + intros x. apply (funR (eB ((funR eAsym) x) x (center eAsym x)) (f (funR eAsym x))).
     + intros a a' ea. cbn.
       pose (e := (eAsym a').2 (a ; ea)).
       apply (transport_eq (fun X => (RB a a' ea) (f a)
                                                   (((eB X .1 a' X .2) (f X .1)).1) .1) e^).
-        exact ((eB a a' ea).(center) (f a)).
+        exact (center (eB a a' ea) (f a)).
   - intros [g efg]. cbn in *. eapply path_sigma_uncurried.
     unshelve eexists. cbn. apply funext.
     + intros a'.
@@ -247,7 +247,6 @@ Arguments cons {_} _ _.
 Notation "[ ]" := nil (format "[ ]").
 Notation "[ x ]" := (cons x nil).
 Notation "[ x ; y ; .. ; z ]" := (cons x (cons y .. (cons z nil) ..)).
-Notation "[ x ; .. ; y ]" := (cons x .. (cons y nil) ..) (compat "8.6").
 
 Infix "::" := cons (at level 60, right associativity).
 
