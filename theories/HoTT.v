@@ -11,6 +11,7 @@ Set Universe Polymorphism.
 Inductive sigT {A:Type} (P:A -> Type) : Type :=
     existT : forall x:A, P x -> sigT P.
 
+Arguments existT {_} _ _.
 Inductive prod (A B : Type) : Type :=  pair : A -> B -> prod A B.
 
 Arguments pair {_ _} _ _.
@@ -192,7 +193,7 @@ Definition transport_ap {A B : Type} (P : B -> Type) (f : A -> B) {x y : A}
            (p : x = y) (z : P (f x)) : transport_eq P (ap f p) z =
                                        transport_eq (fun x => P (f x)) p z.
 Proof.
-  destruct p; reflexivity.
+  destruct p. reflexivity.
 Defined.
 
 Definition naturality  {A B} `{P : A -> Type} `{Q : B -> Type}
@@ -237,7 +238,7 @@ Definition path_sigma_uncurried {A : Type} (P : A -> Type) (u v : sigT P)
 : u = v.
 Proof.
   destruct pq as [p q]. destruct u, v. simpl in *. destruct p.
-  simpl in q; destruct q; reflexivity.
+  simpl in q. destruct q. reflexivity.
 Defined.
 
 Definition pr1_path {A} `{P : A -> Type} {u v : sigT P} (p : u = v) : u.1 = v.1 := ap projT1 p.
@@ -374,7 +375,7 @@ Defined.
 
 Definition inv_inv' A (x y :A) (e: x = y) : e @ e^ = eq_refl.
 Proof.
-  destruct e; reflexivity.
+  destruct e. reflexivity.
 Defined. 
 
 Definition transport_switch {A : Type} (P : A -> Type) {x y : A} (p : y = x) (z : P y) z'
@@ -871,6 +872,59 @@ Proof.
   - left. apply (@isequiv_ap _ _ eB'). exact e.
   - right. intro e. apply f. exact (ap _ e).
 Defined. 
+
+
+
+(*** Some Equivalences for types *)
+
+(* sigma types *)
+Definition EqSigma {A : Type} {P : A -> Type} (w w' : {a:A & P a}) : Equiv (w = w') {p: w .1 = w' .1 & p # (w .2) = w' .2}.
+Proof.
+  unshelve econstructor.
+  + intro p. unshelve econstructor; destruct p; reflexivity.
+  + unshelve eapply isequiv_adjointify.
+    - intros [p q]. destruct w as [w1 w2]; destruct w' as [w'1 w'2]; cbn in *.
+    destruct p, q; cbn in *. reflexivity.
+    - intro p. destruct p. destruct w; cbn in *. reflexivity.
+    - destruct w as [w1 w2]; destruct w' as [w'1 w'2]. 
+      intros [p q]; cbn in *. destruct p; destruct q.
+      reflexivity.
+Defined.
+
+Definition EquivSigma {A : Type} {B B' : A -> Type} 
+  (H : forall a:A, Equiv (B a) (B' a)) : Equiv {a:A & B a} {a:A & B' a}.
+Proof.
+  unshelve econstructor. 
+  * intros [x y]. exact (x; H x y). 
+  * unshelve eapply isequiv_adjointify.
+    + intros [x y]. exact (x; (H x).(e_inv) y).
+    + intros [x y]. rewrite e_sect. reflexivity.
+    + intros [x y]. rewrite e_retr. reflexivity.
+Defined.
+
+Definition swap_sigma {A B : Type} {Q : A -> B -> Type} :
+    Equiv {a:A & {b:B & Q a b}} {b:B & {a:A & Q a b}}.
+Proof.
+    unshelve econstructor.
+    - intros [a q]. destruct q as [b r]. exact (b; (a; r)).
+    - unshelve eapply isequiv_adjointify.
+      -- intros [b q]. destruct q as [a r]. exact (a; (b; r)).
+      -- intros [a q]. destruct q as [b r]. reflexivity.
+      -- intros [b q]. destruct q as [a r]. reflexivity.
+Defined.
+
+Definition swap_forall {A B : Type} {Q: A->B->Type} : 
+  Equiv (forall (a:A) (b:B), Q a b) (forall (b:B) (a:A), Q a b).
+Proof.
+  unshelve econstructor.
+  + intro F. intros b a. exact (F a b).
+  + unshelve eapply isequiv_adjointify.
+    - intro G. intros a b. exact (G b a).
+    - reflexivity.
+    - reflexivity.
+Defined.
+
+
 
 
 (* Instance DecidableEq_Sigma A (B : A -> Type) `{DecidableEq A} `{forall a, DecidableEq (B a)} : *)

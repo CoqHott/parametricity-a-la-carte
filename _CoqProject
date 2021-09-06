@@ -1,3 +1,4 @@
 -arg "-w '-notation-overridden'" -R . ParametricityALaCarte
 theories/HoTT.v
 theories/HoTT_axioms.v
+theories/Equiv_def.v
