@@ -574,22 +574,53 @@ Notation "x = y" := (x = y :>_) : type_scope.
 
 Arguments eq_refl {_ _}. *)
 
-Inductive FR_eq {A A':Type} (RA : A -> A' -> Type) 
+Definition FR_eq {A A':Type} (RA : A -> A' -> Type) 
     (x:A) (x':A') (p:RA x x') :
-    forall y y', RA y y' -> x = y -> x' = y' -> Type :=
-  |eqR : FR_eq RA x x' p x x' p eq_refl eq_refl.
+  forall y y', RA y y' -> x = y -> x' = y' -> Type.
+  intros y y' p' e e'. destruct e , e'.
+  exact (p = p').
+Defined. 
+  (* |eqR : FR_eq RA x x' p x x' p eq_refl eq_refl. *)
 
-Definition IsFun_eq {A A':Type} (RA : A -> A' -> Type) 
-  (x:A) (x':A') (xe:RA x x') :
-  forall y y' ye, IsFun( FR_eq RA x x' xe y y' ye).
+Definition code_eq_arg {A A' : Type} (RA : A -> A' -> Type)
+           (x:A) (x':A') (p:RA x x')
+           (y:A) (y':A') (p':RA y y') (e : x = y): Type.
 Proof.
-  intros. intro p. destruct p.
-  apply (contr_equiv2 (FR_eq RA x x' xe x x' xe eq_refl eq_refl)).
-  apply Equiv_inverse.
-  1:{
-    unshelve econstructor.
-    - intros [q r]. apply eqR.
-    - unshelve eapply isequiv_adjointify.
-      -- intro r. unshelve econstructor. 
-Admitted.
+  destruct e.
+  + exact ({e : x' = y' & e # p = p' }).
+Defined.
 
+Definition Equiv_eq_arg {A A' : Type} (RA : A -> A' -> Type)
+           (x:A) (x':A') (p:RA x x')
+           (y:A) (y':A') (p':RA y y') (e : x = y) :
+  Equiv ({e' : x' = y' & FR_eq RA x x' p y y' p' e e'})
+        (code_eq_arg RA x x' p y y' p' e).
+Proof.
+  destruct e. unfold code_eq_arg.
+  eapply EquivSigma. intros e. destruct e. cbn.
+  apply Equiv_id.
+Defined. 
+
+Definition path_sigma_uncurried_eq {A : Type} (P : A -> Type) (u v : sigT P)
+           (pq : {p : u.1 = v.1 & p # u.2 = v.2})
+           (e : u = v) :
+  e = path_sigma_uncurried P u v pq -> (e..1 ; e..2) = pq.
+Proof.
+  destruct u, v. cbn in *. destruct pq. cbn. destruct x1.
+  destruct e0. intro E. cbn in *. rewrite E. reflexivity.
+Defined. 
+
+Definition IsFun_eq {A A':Type} (RA : A -> A' -> Type)
+           (WFA : IsFun(RA))
+  (x:A) (x':A') (xe:RA x x') :
+  forall y y' ye, IsFun (FR_eq RA x x' xe y y' ye).
+Proof.
+  intros. intro e. eapply contr_equiv2. apply Equiv_inverse.
+  apply Equiv_eq_arg. destruct e. cbn.
+  assert ( (x' ; xe) = (y' ; ye)).
+  unshelve eapply path_contr; exact (WFA x).
+  unshelve econstructor. exists (X..1). exact (X..2).
+  intros. 
+  apply (path_sigma_uncurried_eq _ (x'; xe) (y'; ye) y X).
+  unshelve eapply path2_contr. exact (WFA x).
+Defined.
