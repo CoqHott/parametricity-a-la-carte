@@ -2,7 +2,7 @@ Require Import HoTT.
 Require Import HoTT_axioms.
 Require Import Equiv_def.
 From Coq Require Import ssreflect.
-From Equations Require Import Equations.
+(* From Equations Require Import Equations. *)
 
 Set Universe Polymorphism.
 
@@ -428,113 +428,136 @@ Notation "[| x |]" := (cons_vect x nil_vect).
 
 Infix "□" := cons_vect (at level 60, right associativity).
 
-(* J'ai pris l'égalité sur N pour voir si ça marche déjà avec ça 
-   En essayant de faire de pas utiliser les propriéts particulière de l'égalité *)
-Inductive FR_vect {A A':Type} (RA : A ->A' -> Type) : 
-      forall n m, n = m -> (vect A n) -> (vect A' m) -> Type :=
-  |nil_vectR : FR_vect RA 0 0 (eq_refl) ([| |]) ([| |])
-  |cons_vectR : forall {n m a a' v v'} (p:n = m), RA a a' -> FR_vect RA n m p v v' -> FR_vect RA (S n) (S m) (ap S p) (a □ v) (a' □ v').
+(* Inductive Rnat : nat -> nat -> Type := *)
+(*   R0 : Rnat 0 0 *)
+(* | RS : forall {n m}, Rnat n m -> Rnat (S n) (S m). *)
 
-(* Pbl du p ! 
-J'ai essayé plusieurs trucs mais je n'ai jamais réussi à définir code, ou à m'en passer. 
-En soit avant on avait pas vraiment besoin de code, on pouvait faire les équivalences indépendament
-Mais le problème ici, c'est ceux qu'on veut mettre dans le second exact *)
+Fixpoint Rnat (n m : nat) : Type :=
+  match n , m with
+    | 0 , 0 => True
+    | S n , S m => Rnat n m
+    | _ , _ => False
+  end.
 
-(* Definition code_vect_arg {A A' : Type} (RA : A -> A' -> Type) (n:nat) (m:nat) (p : m = n) (v:vect A n) : Type.
-Proof.
-  destruct v.
-  - exact (FR_vect RA 0 0 eq_refl [||] [||]).
-  - exact ({m:nat & {a':A' & {v':vect A' m & FR_vect RA (S n) (S m) p (a □ v) (a' □ v')}}}).
-Defined. *)
+(* Inductive FR_vect {A A':Type} (RA : A ->A' -> Type) :  *)
+(*       forall n m, Rnat n m -> (vect A n) -> (vect A' m) -> Type := *)
+(*   |nil_vectR : FR_vect RA 0 0 R0 ([| |]) ([| |]) *)
+(*   |cons_vectR : forall {n m a a' v v'} (p: Rnat n m), RA a a' -> FR_vect RA n m p v v' -> FR_vect RA (S n) (S m) (RS p) (a □ v) (a' □ v'). *)
 
-(* On pourrait ne pas exiger le m, mais après une fois qu'on aura la relation
-   on aurait un p qui traine sans rien. Sauf qu'avec, ça bloque *)
-
-(* pour résoudre le problème, on pourrait se ramener sur la diagonal en contractant 
-   le Π(m:nat) (n=m) mais alors on ne peut plus faire d'induction sur v et v', faut en choisir un
-   ce qui pose plein d'autres problèmes *)
-
-Definition code_vect_cons {A A':Type} (RA : A -> A' -> Type) :
-  forall (n:nat) (m:nat) (p:n=m) (v:vect A n) (v' : vect A' m), Type.
-Proof.
-  intros. destruct v, v'.
+Fixpoint FR_vect {A A':Type} (RA : A -> A' -> Type) 
+         (n m : nat) (p : Rnat n m) (v : vect A n) (v' : vect A' m)
+         : Type.
+  destruct v, v'.
   - exact True.
-  - exact False.
-  - exact False.
-  - exact ({q : n = n0 & {H : RA a a0 & FR_vect RA n n0 q v v'}}).
+  - destruct p.
+  - destruct p.
+  - exact ({_ : RA a a0 & FR_vect A A' RA n n0 p v v'}).
 Defined.
 
-Definition Equiv_vect_cons {A A':Type} (RA : A -> A' -> Type) :
-  forall (n:nat) (m:nat) (p:n=m) (v:vect A n) (v' : vect A' m), 
-  Equiv (FR_vect RA n m p v v') (code_vect_cons RA n m p v v').
+
+Definition code_vect_arg {A A' : Type} (RA : A -> A' -> Type) (n:nat) (m:nat) (p : Rnat n m) (v:vect A n) : Type.
 Proof.
-  intros. unshelve econstructor.
-  - intro r. destruct r; unfold code_vect_cons.
-    + exact I.
-    + unshelve econstructor. exact p.
-       unshelve econstructor. exact r.
-       exact r0.
+  destruct v.
+  - destruct m.
+    + exact (FR_vect RA 0 0 p [||] [||]).
+    + destruct p. 
+  - destruct m.
+    + destruct p.
+    + exact ({a':A' & {v':vect A' m &
+              FR_vect RA (S n) (S m) p (a □ v) (a' □ v')}}).
+Defined.
+
+Definition Equiv_vect_arg {A A' : Type} (RA : A -> A' -> Type) (n:nat) (m:nat) (p : Rnat n m) (v:vect A n) :
+  Equiv ({v' : vect A' m & FR_vect RA n m p v v'})
+        (code_vect_arg RA n m p v).
+Proof.
+  destruct v; unfold code_list_arg.
+  * unshelve econstructor.
+  - intros [v r]; destruct v. exact r.
+    destruct p. 
   - unshelve eapply isequiv_adjointify.
-    -- destruct v, v'; unfold code_vect_cons; intro r. 
-       + (* PBL p != refl, deg liberté en plus 
-          normalement IsContr(Σ(b:nat) 0 = b) donc r : (0, p) = (0, refl)
-          et donc on aimerait ap Pr2 r mais il y a des transports normalement ? 
-          Ici, on peut utiliser IsSet(N) mais pour une relation quelconqe ? 
-          Peut-on montrer IsProp(R a b) ? *)
-          assert (p = eq_refl). admit. rewrite X. apply nil_vectR.
-       + inversion r.
-       + inversion r.
-       + (* même problème *)
-         destruct r as [q [H r]]. assert (p = ap S q). admit.
-         rewrite X. apply cons_vectR. exact H. exact r. 
-    -- intro r; destruct r; unfold code_vect_cons; cbn.
-       (* trop compliqué pour moi pour l'instant, 
-          je n'arrive pas à gèrer les rewrite pour les inverses *) 
-       + admit.
-       + admit.
-    -- destruct v, v'; unfold code_vect_cons; intro r; cbn.
-       + admit.
-       + inversion r.
-       + inversion r.
-       + destruct r as [q [H r]]. admit.
-Admitted.
+    -- intro r. destruct m.
+    + cbn in *.  exists [||]. exact r.
+    + destruct p. 
+    -- intros [v r]; destruct v; cbn. reflexivity. destruct p. 
+    -- cbn. destruct m. reflexivity. destruct p.
+  * unshelve econstructor.
+  - intros [v' r ]; destruct v'. destruct p. cbn in *.
+    exists a0. exists v'. exact r.  
+  - unshelve eapply isequiv_adjointify.
+    -- destruct m. destruct p.
+       intros [a' [l' r]]. exact (a'□l'; r).
+    -- intros [l r]; destruct l; cbn. destruct p.
+       reflexivity.
+    -- destruct m. destruct p. intros [a' [l' r]]. reflexivity.
+Defined.
 
 Definition IsFun_vect {A A':Type} (RA : A -> A' -> Type) (WFA : IsFun(RA)) :
-  forall n m p, IsFun(FR_vect RA n m p).
+  forall n m p, IsFun (FR_vect RA n m p).
 Proof.
-  intros n m p v. induction v.
-  * apply (contr_equiv2 True). 2 : apply IsContr_True. apply Equiv_inverse. 
-    apply (@equiv_compose _ (FR_vect RA 0 0 eq_refl [||] [||])).
-    admit.
-    apply Equiv_vect_cons.
-  * apply (contr_equiv2 True). 2 : apply IsContr_True. apply Equiv_inverse.
-    admit.
-Admitted.
-  
-(* attention on biaise ici avec p^.
- Il faudrait un opérateur R m n <=> R n m ???
- Pour l'égalité on aurait : RA : A -> A' -> Type donc pas possible
- Faudra réfléchir à autre chose *)
-Definition Vect_sym_sym {A A':Type} (RA : A -> A' -> Type) :
-  forall n m p v v', Equiv (FR_vect RA n m p v v') (sym (FR_vect (sym RA) m n p^) v v').
+  intros n m p v.
+  eapply contr_equiv2. apply Equiv_inverse.
+  apply Equiv_vect_arg.
+  revert m p. induction v; intros m p.
+  - destruct m.
+    + apply IsContr_True.
+    + destruct p. 
+  - destruct m.
+    + destruct p.
+    + apply (contr_equiv2 {a':A' & RA a a'}). 2: exact (WFA a).
+      cbn. eapply EquivSigma; intro a'.
+      eapply Equiv_inverse. eapply equiv_compose.
+      eapply swap_sigma. apply IsContrSigma_codomain. intro H.
+      eapply contr_equiv2. apply Equiv_inverse. apply Equiv_vect_arg.
+      exact (IHv m p). 
+Defined.
+
+Definition Rnat_sym {n m} (e: Rnat n m) : Rnat m n.
 Proof.
-  intros n x y v v'. unshelve econstructor.
-  - intro r; induction r; cbn.
-    + apply nil_vectR.
-    + rewrite -ap_inv. apply cons_vectR. exact r. exact IHr.
+  revert m e. induction n; destruct m; intro e. 
+  - exact e.
+  - destruct e. 
+  - destruct e. 
+  - exact (IHn _ e).
+Defined. 
+
+Definition vectR_sym_sym A A' (R : A -> A' -> Type)
+  (n m : nat) (p : Rnat n m) :
+  forall v v', FR_vect R m n (Rnat_sym p) v v' ≃ sym (FR_vect (sym R) n m p) v v'.
+Proof.
+  intros v v'. unshelve econstructor.
+  - revert n p v'. induction v; intros; destruct v'.
+    + exact X.
+    + destruct p.
+    + destruct p.
+    + cbn in *. destruct X as [Xa X]. exists Xa.
+      apply (IHv n0 p v' X).
   - unshelve eapply isequiv_adjointify.
-    -- intro r; induction r; cbn.
-      + assert (y = eq_refl). admit. rewrite X. apply nil_vectR.
-        (* attention inversion ie a':A et a:A !*)
-      + assert (y = ap S p^). admit. rewrite X. apply cons_vectR.
-        exact r. apply IHr.
-    -- intro r; induction r; cbn.
-       + admit.
-       + admit.
-    -- intro r. (* pbl ? induction r. cbn. *) admit.
-Admitted.
+    + revert n p v'. induction v; intro ; destruct v'; cbn.
+      * intro r; exact r. 
+      * destruct p.
+      * destruct p.
+      * intros [Xa X]. exists Xa. apply (IHv n0 p v' X).
+    + revert n p v'. induction v; intro ; destruct v'; cbn; try solve [destruct p].
+      * reflexivity.
+      * intros [Xa X]. rewrite (IHv n0 p v' X). reflexivity.
+    + revert n p v'. induction v; intro ; destruct v'; cbn; try solve [destruct p].
+      * reflexivity.
+      * intros [Xa X]. rewrite (IHv n0 p v' X). reflexivity.
+Defined.
 
-
+Definition FP_vect (A A' : Type) (eA : A ⋈ A')
+  (n m : nat) (p : Rnat n m) :
+  vect A n ⋈ vect A' m.
+Proof.
+  unshelve econstructor. exact (FR_vect (_R eA) n m p).
+  split.
+  apply IsFun_vect; typeclasses eauto.
+  unfold rel. 
+  eapply IsFun_sym. eapply vectR_sym_sym. apply IsFun_vect.
+  destruct eA as [RA FA]. destruct FA as [WF WFsym].
+  exact WFsym.
+Defined.
 
 
 (* ########################################################### *)
