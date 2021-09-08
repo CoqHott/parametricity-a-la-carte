@@ -203,19 +203,32 @@ Notation "[ x ; y ; .. ; z ]" := (cons x (cons y .. (cons z nil) ..)).
 
 Infix "::" := cons (at level 60, right associativity).
 
+(* This is the inductive presentation, not used here because it doesn't compute *)
+
 Inductive FR_list {A A'} (RA : A -> A' -> Type) : list A -> list A' -> Type :=
     | listR_nil : FR_list RA nil nil
     | listR_cons : forall {a a' l l'},
         (RA a a') -> (FR_list RA l l') -> FR_list RA (a::l) (a'::l').
 
+(* The deductive presentation seems more accurate for our needs *)
+
+Fixpoint FR_list_deduc {A A'} (RA : A -> A' -> Type) (l : list A) : list A' -> Type.
+Proof.
+  intros l'; induction l; destruct l'.
+  - exact True.
+  - exact False.
+  - exact False.
+  - exact ({_ : RA a a0 & FR_list_deduc _ _ RA l l'}).
+Defined.
+
 Definition code_list_arg {A A' : Type} (RA : A -> A' -> Type) (x: list A) : Type :=
   match x with
-    |[] => FR_list RA [] []
-    |a::l => {a':A' &{l':list A' & FR_list RA (a::l) (a'::l')}}
+    |[] => FR_list_deduc RA [] []
+    |a::l => {a':A' &{l':list A' & FR_list_deduc RA (a::l) (a'::l')}}
   end.
 
 Definition Equiv_list_arg {A A' : Type} (RA : A -> A' -> Type) (x: list A) :
-  Equiv ({y : list A' & FR_list RA x y}) (code_list_arg RA x).
+  Equiv ({y : list A' & FR_list_deduc RA x y}) (code_list_arg RA x).
 Proof.
   destruct x; unfold code_list_arg.
   * unshelve econstructor.
@@ -232,58 +245,38 @@ Proof.
       -- intros [a' [l' r]]. reflexivity.
 Defined.
 
-Definition code_list_cons {A A':Type} (RA : A -> A' -> Type) (x : list A) (y:list A') : Type :=
-  match x,y with
-    |[], [] => True
-    |[], a'::l' => False
-    |a::l, [] => False
-    |a::l, a'::l' => {H : RA a a' & FR_list RA l l'}
-  end.
-
-Definition Equiv_list_cons {A A':Type} (RA : A -> A' -> Type) (x: list A) (y : list A') :
-  Equiv (FR_list RA x y) (code_list_cons RA x y).
-Proof.
-  unfold code_list_cons. unshelve econstructor.
-  * intro r; destruct r. exact I. exact (r; r0).
-  * unshelve eapply isequiv_adjointify.
-    - intro r; destruct x,y; destruct r => //=.
-      -- apply listR_nil.
-      -- eapply listR_cons; auto.
-    - intro r; destruct r; reflexivity.
-    - intro r; destruct x,y; destruct r => //=.
-Defined.
-
 Definition IsFun_list (A A' : Type) (RA : A -> A' -> Type)
-           (WFA : IsFun RA) : IsFun (FR_list RA).
+           (WFA : IsFun RA) : IsFun (FR_list_deduc RA).
 Proof.
-  unfold IsFun. intro l; induction l.
-  * apply (contr_equiv2 True). 2: apply IsContr_True.
-    apply Equiv_inverse. eapply equiv_compose.
-    apply Equiv_list_arg; unfold code_list_arg.
-    apply Equiv_list_cons. 
- * apply (contr_equiv2 {a':A' & RA a a'}). 2: exact (WFA a).
-   apply Equiv_inverse. eapply equiv_compose.
-   apply Equiv_list_arg. unfold code_list_arg. eapply equiv_compose.
-   eapply EquivSigma; intro a'. eapply EquivSigma; intro l'. apply Equiv_list_cons. cbn.
-   eapply equiv_compose. eapply EquivSigma; intro a'. eapply swap_sigma.
-   cbn. eapply EquivSigma; intro a'. apply IsContrSigma_codomain.
-   intro H. apply IHl.
+  intro l.
+  induction l ;
+    eapply contr_equiv2 ; try (apply Equiv_inverse; apply Equiv_list_arg).
+  - apply IsContr_True.
+  - cbn. apply (contr_equiv2 {a':A' & RA a a'}). 2: exact (WFA a).
+    cbn. eapply EquivSigma; intro a'.
+    eapply Equiv_inverse. eapply equiv_compose. eapply swap_sigma.
+    apply IsContrSigma_codomain. intro H. apply IHl. 
 Defined.
  
 Definition listR_sym_sym A A' (R : A -> A' -> Type) :
-  forall l l', FR_list R l l' ≃ sym (FR_list (sym R)) l l'.
+  forall l l', FR_list_deduc R l l' ≃ sym (FR_list_deduc (sym R)) l l'.
 Proof.
   intros l l'. unshelve econstructor.
-  * intro r; induction r. apply listR_nil. apply listR_cons => //=.
-  *  unshelve eapply isequiv_adjointify.
-    1 : {intro r; induction r. apply listR_nil. apply listR_cons => //=. }
-    all: intro r; induction r; compute => //; apply ap; exact IHr.
+  - revert l'. induction l; intro l'; destruct l'; cbn; intro r; try exact r.
+    + exists r.1. apply IHl. exact r.2.
+  - unshelve eapply isequiv_adjointify.
+    + revert l'. induction l; intro l'; destruct l'; cbn; intro r; try exact r.
+      * exists r.1. apply IHl. exact r.2.
+    + revert l'. induction l; intro l'; destruct l'; cbn; try reflexivity.
+      * intros [Xa X]. rewrite (IHl l' X). reflexivity.
+    + revert l'. induction l; intro l'; destruct l'; cbn; try reflexivity.
+      * intros [Xa X]. rewrite (IHl l' X). reflexivity.
 Defined.
 
 Definition FP_list (A A' : Type) (eA : A ⋈ A'):
   list A ⋈ list A'.
 Proof.
-  unshelve econstructor. exact (FR_list (_R eA)).
+  unshelve econstructor. exact (FR_list_deduc (_R eA)).
   split.
   apply IsFun_list; typeclasses eauto.
   eapply IsFun_sym. eapply listR_sym_sym. apply IsFun_list.
