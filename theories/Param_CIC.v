@@ -148,13 +148,6 @@ Proof.
   * exact (WFB b).
 Defined.
 
-Definition Somme_sym_sym_bis {A A' B B': Type}
-  (RA : A -> A' -> Type) (RB : B -> B' -> Type) : 
-  forall {x y}, FR_somme RA RB x y ≃ sym (FR_somme (sym RA) (sym RB)) x y.
-Proof.
-  intros x y. destruct x as [a | b], y as [a' | b']; cbn; try (apply Equiv_id).
-Defined.
-
 Definition Somme_sym_sym {A A' B B': Type}
 (RA : A -> A' -> Type) (RB : B -> B' -> Type) : 
 forall {x y}, FR_somme RA RB x y ≃ sym (FR_somme (sym RA) (sym RB)) x y.
@@ -171,6 +164,14 @@ Proof.
     try reflexivity.
 Defined.
 
+(* shorter but less generalizable ? cf list than sigma types *)
+Definition Somme_sym_sym_bis {A A' B B': Type}
+  (RA : A -> A' -> Type) (RB : B -> B' -> Type) : 
+  forall {x y}, FR_somme RA RB x y ≃ sym (FR_somme (sym RA) (sym RB)) x y.
+Proof.
+  intros x y. destruct x as [a | b], y as [a' | b']; cbn; try (apply Equiv_id).
+Defined.
+
 Definition FP_somme {A A' B B' : Type} (eA : A ⋈ A') (eB : B ⋈ B') : (A ⊔ B) ⋈ (A' ⊔ B').
 Proof.
   destruct eA as [RA FA]; destruct eB as [RB FB].
@@ -182,7 +183,6 @@ Proof.
     - eapply IsFun_sym. eapply Somme_sym_sym. apply IsFun_somme.
       all: assumption.  
 Defined.
-
 
 
 
@@ -247,21 +247,7 @@ Proof.
     cbn. apply IsContrSigma_codomain. intro H. apply IHl. 
 Defined.
 
-Definition listR_sym_sym_bis A A' (R : A -> A' -> Type) :
-  forall l l', FR_list R l l' ≃ sym (FR_list (sym R)) l l'.
-Proof.
-  intros l; induction l as [|a l]; intro l'; induction l' as [|a' l']; cbn; try (apply Equiv_id).
-  unshelve econstructor.
-  - intros [H X]. exists H. apply IHl. exact X.
-  - unshelve eapply isequiv_adjointify.
-    -- intros [H X]. exists H. apply IHl. exact X.
-    -- intros [H X]; apply path_sigma_uncurried; unshelve econstructor; try reflexivity.
-       cbn. apply e_sect.
-       -- intros [H X]; apply path_sigma_uncurried; unshelve econstructor; try reflexivity.
-       cbn. apply e_retr.
-Defined
-
-Definition listR_sym_sym_bis A A' (R : A -> A' -> Type) :
+Definition listR_sym_sym A A' (R : A -> A' -> Type) :
   forall l l', FR_list R l l' ≃ sym (FR_list (sym R)) l l'.
 Proof.
   intros l l'. unshelve econstructor.
@@ -274,6 +260,21 @@ Proof.
        intros [Xa X]. rewrite (IHl l' X). reflexivity.
     -- revert l'. induction l; intro l'; destruct l'; cbn; try reflexivity.
       + intros [Xa X]. rewrite (IHl l' X). reflexivity.
+Defined.
+
+(* moins pratique avec inductif ? Mieux ?*)
+Definition listR_sym_sym_bis A A' (R : A -> A' -> Type) :
+  forall l l', FR_list R l l' ≃ sym (FR_list (sym R)) l l'.
+Proof.
+  intros l; induction l as [|a l]; intro l'; induction l' as [|a' l']; cbn; try (apply Equiv_id).
+  unshelve econstructor.
+  - intros [H X]. exists H. apply IHl. exact X.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [H X]. exists H. apply IHl. exact X.
+    -- intros [H X]; apply path_sigma_uncurried; unshelve econstructor; try reflexivity.
+       cbn. apply e_sect.
+       -- intros [H X]; apply path_sigma_uncurried; unshelve econstructor; try reflexivity.
+       cbn. apply e_retr.
 Defined.
 
 Definition FP_list (A A' : Type) (eA : A ⋈ A'):
@@ -302,71 +303,51 @@ Notation " ( x ; p ) " := (existT _ x p).
 Definition EqSigma {A : Type} {P : A -> Type} (w w' : {a:A & P a}) : Equiv (w = w') {p: w .1 = w' .1 & p # (w .2) = w' .2}.
 Proof. *)
 
-
-Inductive FR_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
-    (RA : A -> A' -> Type) (RB : forall (a:A) (a':A') (H:RA a a'), B a -> B' a' -> Type)
-  : {a: A & B a} -> {a':A' & B' a'} -> Type :=
-  |sigma_cons : forall {a a' b b'},
-    forall (H:RA a a'), RB a a' H b b' -> FR_sigma RA RB (a;b) (a';b').
+Fixpoint FR_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
+      (RA : A -> A' -> Type)
+      (RB : forall (a:A) (a':A') (H:RA a a'), B a -> B' a' -> Type)
+      (x : {a: A & B a}) (y:{a':A' & B' a'}) : Type.
+Proof.
+  destruct x as [a b], y as [a' b'].
+  exact ({H: RA a a' & RB a a' H b b'}).
+Defined.
 
 Definition code_sigma_arg {A A':Type} {B : A -> Type} {B' : A' -> Type}
-  (RA : A -> A' -> Type) (RB : forall (a:A) (a':A') (H:RA a a'), B a -> B' a' -> Type)
-  (x: {a:A & B a}) :=
-  match x with
-    |existT _ a b => {a':A' & {b' : B' a' & FR_sigma RA RB (a;b) (a';b')}}
-  end.
+      (RA : A -> A' -> Type)
+      (RB : forall (a:A) (a':A') (H:RA a a'), B a -> B' a' -> Type)
+      (x: {a:A & B a}) : Type.
+Proof.
+  destruct x as [a b].
+  exact ({a' : A' & {b' : B' a' & FR_sigma RA RB (a;b) (a';b')}}).
+Defined.
 
 Definition Equiv_sigma_arg {A A':Type} {B : A -> Type} {B' : A' -> Type}
   (RA : A -> A' -> Type) (RB : forall (a:A) (a':A') (H:RA a a'), B a -> B' a' -> Type)
   (x: {a:A & B a}) : 
   Equiv ({y:{a':A' & B' a'} & FR_sigma RA RB x y}) (code_sigma_arg RA RB x).
 Proof.
-  unfold code_sigma_arg. destruct x as [a b].
-  unshelve econstructor.
-  * intros [y r]. destruct y as [a' b'].
+  destruct x as [a b]. unshelve econstructor.
+  * intros [y r]. destruct y as [a' b']; cbn.
     exists a'. exists b'. exact r.
   * unshelve eapply isequiv_adjointify.
     - intros [a' [b' r]]. exact ((a';b'); r).
-    - intros [y r]; destruct r => //=.
-    - intros [a' [b' r]] => //=.
-Defined.
-
-Definition code_sigma_cons {A A':Type} {B : A -> Type} {B' : A' -> Type}
-  (RA : A -> A' -> Type) (RB : forall (a:A) (a':A') (H:RA a a'), B a -> B' a' -> Type)
-  (x: {a:A & B a}) (y:{a':A' & B' a'}) :=
-  match x, y with
-    |existT _ a b, existT _ a' b' => {H: RA a a' & RB a a' H b b'}
-  end.
-
-Definition Equiv_sigma_cons {A A':Type} {B : A -> Type} {B' : A' -> Type}
-  (RA : A -> A' -> Type) (RB : forall (a:A) (a':A') (H:RA a a'), B a -> B' a' -> Type)
-  (x: {a:A & B a}) (y:{a':A' & B' a'}) :
-  Equiv (FR_sigma RA RB x y) (code_sigma_cons RA RB x y).
-Proof.
-  unfold code_sigma_cons. unshelve econstructor.
-  * intro r; destruct r. exact (H; r).
-  * unshelve eapply isequiv_adjointify.
-    - destruct x, y. intros [H r]. eapply sigma_cons. exact r.
-    - intro r; destruct r => //=.
-    - destruct x, y. intros [H r] => //=.
+    - intros [y r]; destruct y; cbn. try reflexivity.
+    - intros [a' [b' r]]; cbn. try reflexivity.
 Defined.
 
 Definition IsFun_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
-  {RA : A -> A' -> Type} 
-  {RB : forall a a' (H:RA a a'), Rel (B a) (B' a')} 
-  (WFA : IsFun RA)
-  (WFB : forall a a' (H: RA a a'), IsFun(RB a a' H)) :
-  IsFun (FR_sigma RA RB).
+      {RA : A -> A' -> Type} 
+      {RB : forall a a' (H:RA a a'), Rel (B a) (B' a')} 
+      (WFA : IsFun RA)
+      (WFB : forall a a' (H: RA a a'), IsFun(RB a a' H)) :
+      IsFun (FR_sigma RA RB).
 Proof.
-  unfold IsFun. intro x; destruct x as [a b].
-  eapply (contr_equiv2 {a':A' & RA a a'}). 2 : exact (WFA a).
-  apply Equiv_inverse.
-  eapply equiv_compose. apply Equiv_sigma_arg. unfold code_sigma_arg.
-  eapply equiv_compose. eapply EquivSigma; intro a'.
-  eapply EquivSigma; intro b'. apply Equiv_sigma_cons. cbn.
-  eapply equiv_compose. eapply EquivSigma; intro a'. eapply swap_sigma. cbn.
-  eapply EquivSigma; intro a'. apply IsContrSigma_codomain. intro H.
-  exact (WFB a a' H b).
+  intro x. destruct x as [a b].
+  eapply contr_equiv2; try (apply Equiv_inverse; apply Equiv_sigma_arg).
+  apply (contr_equiv2 {a':A' & RA a a'}). 2 : exact (WFA a).
+  cbn. apply Equiv_inverse. apply EquivSigma; intros a'.
+  eapply equiv_compose. apply swap_sigma. cbn.
+  apply IsContrSigma_codomain; intro H. exact (WFB a a' H b).
 Defined.
 
 Definition Sigma_sym_sym {A A'} {P : A -> Type} {P' : A' -> Type} 
@@ -374,12 +355,34 @@ Definition Sigma_sym_sym {A A'} {P : A -> Type} {P' : A' -> Type}
   {RB : forall a a' (H:RA a a'), Rel (P a) (P' a')} :
   forall z w, (FR_sigma RA RB z w) ≃ sym (FR_sigma (sym RA) (fun x y e => sym (RB y x e))) z w.
 Proof.
-  unfold sym. unshelve econstructor.
-  - intros X; induction X. eapply sigma_cons. exact r.
+  intros z w. unshelve econstructor.
+  - revert w; induction z as [a b]; intro w; destruct w as [a' b']; cbn.
+    intros [H X]. exists H. exact X.
   - unshelve eapply isequiv_adjointify.
-    intro X; induction X. eapply sigma_cons. exact r.
-    all : intro X; induction X; reflexivity.
+    -- revert w; induction z as [a b]; intro w; destruct w as [a' b']; cbn.
+    intros [H X]. exists H. exact X.
+    -- revert w; induction z as [a b]; intro w; destruct w as [a' b']; cbn.
+       intros [H X]. reflexivity.
+    -- revert w; induction z as [a b]; intro w; destruct w as [a' b']; cbn.
+       intros [H X]. reflexivity.
 Defined.
+
+(* Pratique sans inductif ? *)
+Definition Sigma_sym_sym_bis {A A'} {P : A -> Type} {P' : A' -> Type} 
+  {RA : A -> A' -> Type} 
+  {RB : forall a a' (H:RA a a'), Rel (P a) (P' a')} :
+  forall z w, (FR_sigma RA RB z w) ≃ sym (FR_sigma (sym RA) (fun x y e => sym (RB y x e))) z w.
+Proof.
+  intros z w. destruct z as [a b], w as [a' b']. cbn.
+  unshelve econstructor.
+  - intros [H X]. exists H. exact X.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [H X]. exists H. exact X.
+    -- intros [H X]; reflexivity.
+    -- intros [H X]; reflexivity.
+Defined.
+
+
 
 Definition FP_sigma (A A' : Type) (B : A -> Type) (B' : A' -> Type) 
     (eA : A ⋈ A')
@@ -404,14 +407,11 @@ Defined.
 
 
 
-
-
-
 (* ###########################################################*)
-(* ###     WORK IN PROGRESS : Vect(A) ⋈ Vect(A')          ###*)
+(* ###    WORK IN PROGRESS : Inductives types families     ###*)
 (* ###########################################################*)
 
-
+(*** Vect A n ⋈ Vect A' n ***)
 Inductive vect (A:Type) : nat -> Type :=
   |nil_vect : vect A 0
   |cons_vect : forall n:nat, A -> vect A n -> vect A (S n).
