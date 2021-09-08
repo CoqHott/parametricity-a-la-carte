@@ -7,7 +7,10 @@ From Coq Require Import ssreflect.
 Set Universe Polymorphism.
 
 
-(* ----- Parametricity ----- *)
+(* ########################################################### *)
+(* ###               Parametricity for CCω                 ### *)
+(* ########################################################### *)
+
 
 (*** Type ⋈ Type ***)
 Instance FR_Type_def@{i j} : Rel@{j j j} Type@{i} Type@{i} :=
@@ -86,6 +89,12 @@ Proof.
 Defined.
 
 
+
+(* ########################################################### *)
+(* ###        Parametricity for Inductive Types            ### *)
+(* ########################################################### *)
+
+
 (*** A ⊔ B ⋈ A' ⊔ B' ***)
 
 Inductive somme (A:Type) (B:Type) : Type :=
@@ -97,80 +106,69 @@ Arguments inr {_ _} _.
 
 Notation "A ⊔ B" := (somme A B) (at level 30).
 
-Inductive FR_somme {A A' B B':Type} (RA : A -> A' -> Type) (RB : B -> B' -> Type) : (A ⊔ B) -> (A' ⊔ B') -> Type :=
-  | cons_l : forall {a a'}, RA a a' -> FR_somme RA RB (inl a) (inl a')
-  | cons_r : forall {b b'}, RB b b' -> FR_somme RA RB (inr b) (inr b').
+Fixpoint FR_somme {A A' B B':Type} (RA : A -> A' -> Type) (RB : B -> B' -> Type) 
+                  (x:A ⊔ B) (y:A' ⊔ B') : Type.
+Proof.
+  destruct x as [a | b], y as [a' | b'].
+  - exact (RA a a').
+  - exact False.
+  - exact False.
+  - exact (RB b b').
+Defined.
 
-Definition code_somme_arg {A A' B B' : Type} (RA : A -> A' -> Type) (RB : B -> B' -> Type) (x : A ⊔ B): Type :=
-  match x with 
-    |inl a => {a':A' & FR_somme RA RB (inl a) (inl a')}
-    |inr b => {b':B' & FR_somme RA RB (inr b) (inr b')}
-  end.
+Definition code_somme_arg {A A' B B' : Type} (RA : A -> A' -> Type) (RB : B -> B' -> Type) (x : A ⊔ B) : Type.
+  destruct x as [a | b].
+  - exact ({a':A' & FR_somme RA RB (inl a) (inl a')}).
+  - exact ({b':B' & FR_somme RA RB (inr b) (inr b')}).
+Defined.
 
 Definition Equiv_somme_arg {A A' B B' : Type} (RA : A -> A' -> Type) (RB : B -> B' -> Type) (x : A ⊔ B) : 
   Equiv ({y : A'⊔B' & FR_somme RA RB x y}) (code_somme_arg RA RB x).
-  unfold code_somme_arg. induction x.
+  unfold code_somme_arg. induction x as [a | b].
   * unshelve econstructor.
-    - intros [y r]; destruct y. exact (a0; r). inversion r.
+    - intros [y r]; destruct y as [a' | b']. exact (a'; r). inversion r.
     - unshelve eapply isequiv_adjointify.
       -- intros [a' r]. exact (inl a'; r).
-      -- intros [y r]; destruct y. reflexivity. inversion r.
+      -- intros [y r]; destruct y as [a' | b'] => //=; inversion r.
       -- intros [a' r]. reflexivity.
   * unshelve econstructor.
-  - intros [y r]; destruct y. inversion r. exact (b0; r). 
+  - intros [y r]; destruct y as [a' | b']. inversion r. exact (b'; r). 
   - unshelve eapply isequiv_adjointify.
     -- intros [b' r]. exact (inr b'; r).
-    -- intros [y r]; destruct y => //=; inversion r.
+    -- intros [y r]; destruct y as [a' | b' ]=> //=; inversion r.
     -- intros [b' r] => //=.
 Defined.
-
-Definition code_somme_cons {A A' B B' : Type} (RA : A -> A' -> Type) (RB : B -> B' -> Type) (x : A ⊔ B) (y:A' ⊔ B'): Type :=
-  match x, y with 
-    |inl a, inl a' => RA a a'
-    |inl a, inr b' => False
-    |inr b, inl a' => False
-    |inr b, inr b' => RB b b'
-  end.
-
-Definition Equiv_somme_cons {A A' B B' : Type} (RA : A -> A' -> Type) (RB : B -> B' -> Type) (x : A ⊔ B) (y:A' ⊔ B') : 
-  Equiv (FR_somme RA RB x y) (code_somme_cons RA RB x y).
-Proof.
-  unfold code_somme_cons. unshelve econstructor.
-  * intro r; destruct r. exact r. exact r.
-  * unshelve eapply isequiv_adjointify.
-    - destruct x, y; intro r.
-      -- apply cons_l; exact r.
-      -- inversion r.
-      -- inversion r.
-      -- apply cons_r; exact r.
-    - intro r; destruct r => //=.
-    - destruct x, y => //=.
-Defined.
-
 
 Definition IsFun_somme {A A' B B' : Type} (RA : A -> A' -> Type) (RB : B -> B' -> Type)
   (WFA : IsFun RA) (WFB : IsFun RB) : IsFun (FR_somme RA RB).
 Proof.
-  unfold IsFun. intro x; induction x.
-  * apply (contr_equiv2 {a':A' & RA a a'}). 2: exact (WFA a).
-    apply Equiv_inverse.
-    eapply equiv_compose. apply Equiv_somme_arg. unfold code_somme_arg.
-    eapply EquivSigma; intro a'. eapply Equiv_somme_cons.
-  * apply (contr_equiv2 {b':B' & RB b b'}). 2: exact (WFB b).
-    apply Equiv_inverse.
-    eapply equiv_compose. apply Equiv_somme_arg. unfold code_somme_arg.
-    eapply EquivSigma; intro b'. eapply Equiv_somme_cons.
+  intro x. induction x as [a | b]; eapply contr_equiv2; 
+  try (apply Equiv_inverse; apply Equiv_somme_arg); cbn.
+  * exact (WFA a).
+  * exact (WFB b).
 Defined.
 
-Definition Somme_sym_sym {A A' B B': Type}
+Definition Somme_sym_sym_bis {A A' B B': Type}
   (RA : A -> A' -> Type) (RB : B -> B' -> Type) : 
   forall {x y}, FR_somme RA RB x y ≃ sym (FR_somme (sym RA) (sym RB)) x y.
 Proof.
-  intros x y. unfold sym. unshelve econstructor. 
-  + intro r. destruct r. 1: apply cons_l. 2: apply cons_r. all: exact r.
-  + unshelve eapply isequiv_adjointify.
-    1 : { intro r; destruct r. 1 :eapply cons_l. 2 :apply cons_r. all :exact r. }
-    all : intro r; destruct r => //=.
+  intros x y. destruct x as [a | b], y as [a' | b']; cbn; try (apply Equiv_id).
+Defined.
+
+Definition Somme_sym_sym {A A' B B': Type}
+(RA : A -> A' -> Type) (RB : B -> B' -> Type) : 
+forall {x y}, FR_somme RA RB x y ≃ sym (FR_somme (sym RA) (sym RB)) x y.
+Proof.
+  intros x y. unshelve econstructor.
+  - revert y. induction x as [a | b]; intro y; destruct y as [a' | b']; cbn;
+    intro r; try (exact r).
+  - unshelve eapply isequiv_adjointify.
+    -- revert y. induction x as [a | b]; intro y; destruct y as [a' | b']; cbn;
+    intro r; try (exact r).
+    -- revert y. induction x as [a | b]; intro y; destruct y as [a' | b']; cbn;
+       try reflexivity.
+    -- revert y. induction x as [a | b]; intro y; destruct y as [a' | b']; cbn;
+    try reflexivity.
 Defined.
 
 Definition FP_somme {A A' B B' : Type} (eA : A ⋈ A') (eB : B ⋈ B') : (A ⊔ B) ⋈ (A' ⊔ B').
@@ -190,7 +188,6 @@ Defined.
 
 (*** List A ⋈ List B ***)
 
-(* Definitions *)
 Inductive list (A : Type) : Type :=
     nil : list A | cons : A -> list A -> list A.
 
@@ -202,6 +199,7 @@ Notation "[ x ]" := (cons x nil).
 Notation "[ x ; y ; .. ; z ]" := (cons x (cons y .. (cons z nil) ..)).
 
 Infix "::" := cons (at level 60, right associativity).
+
 
 Fixpoint FR_list {A A'} (RA : A -> A' -> Type) (l: list A) (l': list A') : Type.
 Proof.
@@ -240,9 +238,8 @@ Defined.
 Definition IsFun_list (A A' : Type) (RA : A -> A' -> Type)
            (WFA : IsFun RA) : IsFun (FR_list RA).
 Proof.
-  intro l.
-  induction l ;
-    eapply contr_equiv2 ; try (apply Equiv_inverse; apply Equiv_list_arg).
+  intro l. induction l ;
+  eapply contr_equiv2 ; try (apply Equiv_inverse; apply Equiv_list_arg).
   - cbn. apply IsContr_True.
   - cbn. apply (contr_equiv2 {a':A' & RA a a'}). 2: exact (WFA a).
     eapply EquivSigma; intro a'.
@@ -250,19 +247,33 @@ Proof.
     cbn. apply IsContrSigma_codomain. intro H. apply IHl. 
 Defined.
 
-Definition listR_sym_sym A A' (R : A -> A' -> Type) :
+Definition listR_sym_sym_bis A A' (R : A -> A' -> Type) :
+  forall l l', FR_list R l l' ≃ sym (FR_list (sym R)) l l'.
+Proof.
+  intros l; induction l as [|a l]; intro l'; induction l' as [|a' l']; cbn; try (apply Equiv_id).
+  unshelve econstructor.
+  - intros [H X]. exists H. apply IHl. exact X.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [H X]. exists H. apply IHl. exact X.
+    -- intros [H X]; apply path_sigma_uncurried; unshelve econstructor; try reflexivity.
+       cbn. apply e_sect.
+       -- intros [H X]; apply path_sigma_uncurried; unshelve econstructor; try reflexivity.
+       cbn. apply e_retr.
+Defined
+
+Definition listR_sym_sym_bis A A' (R : A -> A' -> Type) :
   forall l l', FR_list R l l' ≃ sym (FR_list (sym R)) l l'.
 Proof.
   intros l l'. unshelve econstructor.
   - revert l'. induction l; intro l'; destruct l'; cbn; intro r; try exact r.
-    + exists r.1. apply IHl. exact r.2.
+    exists r.1. apply IHl. exact r.2.
   - unshelve eapply isequiv_adjointify.
-    + revert l'. induction l; intro l'; destruct l'; cbn; intro r; try exact r.
-      * exists r.1. apply IHl. exact r.2.
-    + revert l'. induction l; intro l'; destruct l'; cbn; try reflexivity.
-      * intros [Xa X]. rewrite (IHl l' X). reflexivity.
-    + revert l'. induction l; intro l'; destruct l'; cbn; try reflexivity.
-      * intros [Xa X]. rewrite (IHl l' X). reflexivity.
+    -- revert l'. induction l; intro l'; destruct l'; cbn; intro r; try exact r.
+       exists r.1. apply IHl. exact r.2.
+    -- revert l'. induction l; intro l'; destruct l'; cbn; try reflexivity.
+       intros [Xa X]. rewrite (IHl l' X). reflexivity.
+    -- revert l'. induction l; intro l'; destruct l'; cbn; try reflexivity.
+      + intros [Xa X]. rewrite (IHl l' X). reflexivity.
 Defined.
 
 Definition FP_list (A A' : Type) (eA : A ⋈ A'):
