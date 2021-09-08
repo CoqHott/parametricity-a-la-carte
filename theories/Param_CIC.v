@@ -76,7 +76,8 @@ Defined.
 Definition FP_forall (A A' : Type) (eA : A ⋈ A')
            (B : A -> Type) (B' : A' -> Type) 
            (eB : forall (a:A) (a':A') (H: (_R eA) a a'), B a ⋈ B' a') :
-  (forall x : A, B x) ⋈ (forall x : A', B' x).
+  (forall x : A,
+      B x) ⋈ (forall x : A', B' x).
 Proof.
   unshelve econstructor. 
   * unshelve eapply FR_Forall. intros. apply (eB _ _ H).
@@ -94,6 +95,19 @@ Defined.
 (* ###        Parametricity for Inductive Types            ### *)
 (* ########################################################### *)
 
+(** Generic Lemma to prove contractibility of telescope **)
+
+Definition IsContr_telescope {A} {P RA : A -> Type}
+           {RP : forall a, RA a -> P a -> Type}
+  : IsContr {a:A & RA a} ->
+    (forall a H, IsContr {b : P a & RP a H b}) ->
+    IsContr {a : A & {b : P a & {H : RA a & RP a H b}}}.
+Proof.
+  intros Ha Hb. apply (contr_equiv2 {a : A & RA a}); try apply Ha.
+  apply EquivSigma. intro a. eapply Equiv_inverse.
+  eapply equiv_compose. eapply swap_sigma.
+  cbn. apply IsContrSigma_codomain. intro H. apply Hb. 
+Defined.
 
 (*** A ⊔ B ⋈ A' ⊔ B' ***)
 
@@ -142,8 +156,9 @@ Defined.
 Definition IsFun_somme {A A' B B' : Type} (RA : A -> A' -> Type) (RB : B -> B' -> Type)
   (WFA : IsFun RA) (WFB : IsFun RB) : IsFun (FR_somme RA RB).
 Proof.
-  intro x. induction x as [a | b]; eapply contr_equiv2; 
-  try (apply Equiv_inverse; apply Equiv_somme_arg); cbn.
+  intro x; induction x as [a | b]; 
+    eapply contr_equiv2; 
+    try (apply Equiv_inverse; apply Equiv_somme_arg); cbn.
   * exact (WFA a).
   * exact (WFB b).
 Defined.
@@ -240,11 +255,8 @@ Definition IsFun_list (A A' : Type) (RA : A -> A' -> Type)
 Proof.
   intro l. induction l ;
   eapply contr_equiv2 ; try (apply Equiv_inverse; apply Equiv_list_arg).
-  - cbn. apply IsContr_True.
-  - cbn. apply (contr_equiv2 {a':A' & RA a a'}). 2: exact (WFA a).
-    eapply EquivSigma; intro a'.
-    eapply Equiv_inverse. eapply equiv_compose. eapply swap_sigma.
-    cbn. apply IsContrSigma_codomain. intro H. apply IHl. 
+  - apply IsContr_True.
+  - apply (IsContr_telescope (WFA a) (fun _ _ => IHl)). 
 Defined.
 
 Definition listR_sym_sym A A' (R : A -> A' -> Type) :
@@ -343,11 +355,8 @@ Definition IsFun_sigma {A A'} {B : A -> Type} {B' : A' -> Type}
       IsFun (FR_sigma RA RB).
 Proof.
   intro x. destruct x as [a b].
-  eapply contr_equiv2; try (apply Equiv_inverse; apply Equiv_sigma_arg).
-  apply (contr_equiv2 {a':A' & RA a a'}). 2 : exact (WFA a).
-  cbn. apply Equiv_inverse. apply EquivSigma; intros a'.
-  eapply equiv_compose. apply swap_sigma. cbn.
-  apply IsContrSigma_codomain; intro H. exact (WFB a a' H b).
+  eapply contr_equiv2; try (apply Equiv_inverse; apply Equiv_sigma_arg). cbn.
+  apply (IsContr_telescope (WFA a) (fun a' H => WFB a a' H b)).
 Defined.
 
 Definition Sigma_sym_sym {A A'} {P : A -> Type} {P' : A' -> Type} 
