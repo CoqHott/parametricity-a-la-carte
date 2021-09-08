@@ -327,12 +327,12 @@ Definition Equiv_sigma_arg {A A':Type} {B : A -> Type} {B' : A' -> Type}
   Equiv ({y:{a':A' & B' a'} & FR_sigma RA RB x y}) (code_sigma_arg RA RB x).
 Proof.
   destruct x as [a b]. unshelve econstructor.
-  * intros [y r]. destruct y as [a' b']; cbn.
+  - intros [y r]. destruct y as [a' b']; cbn.
     exists a'. exists b'. exact r.
-  * unshelve eapply isequiv_adjointify.
-    - intros [a' [b' r]]. exact ((a';b'); r).
-    - intros [y r]; destruct y; cbn. try reflexivity.
-    - intros [a' [b' r]]; cbn. try reflexivity.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [a' [b' r]]. exact ((a';b'); r).
+    -- intros [y r]; destruct y; cbn. try reflexivity.
+    -- intros [a' [b' r]]; cbn. try reflexivity.
 Defined.
 
 Definition IsFun_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
@@ -405,8 +405,6 @@ Defined.
 
   
 
-
-
 (* ###########################################################*)
 (* ###    WORK IN PROGRESS : Inductives types families     ###*)
 (* ###########################################################*)
@@ -424,21 +422,12 @@ Notation "[| x |]" := (cons_vect x nil_vect).
 
 Infix "□" := cons_vect (at level 60, right associativity).
 
-(* Inductive Rnat : nat -> nat -> Type := *)
-(*   R0 : Rnat 0 0 *)
-(* | RS : forall {n m}, Rnat n m -> Rnat (S n) (S m). *)
-
 Fixpoint Rnat (n m : nat) : Type :=
   match n , m with
     | 0 , 0 => True
     | S n , S m => Rnat n m
     | _ , _ => False
   end.
-
-(* Inductive FR_vect {A A':Type} (RA : A ->A' -> Type) :  *)
-(*       forall n m, Rnat n m -> (vect A n) -> (vect A' m) -> Type := *)
-(*   |nil_vectR : FR_vect RA 0 0 R0 ([| |]) ([| |]) *)
-(*   |cons_vectR : forall {n m a a' v v'} (p: Rnat n m), RA a a' -> FR_vect RA n m p v v' -> FR_vect RA (S n) (S m) (RS p) (a □ v) (a' □ v'). *)
 
 Fixpoint FR_vect {A A':Type} (RA : A -> A' -> Type) 
          (n m : nat) (p : Rnat n m) (v : vect A n) (v' : vect A' m)
@@ -449,7 +438,6 @@ Fixpoint FR_vect {A A':Type} (RA : A -> A' -> Type)
   - destruct p.
   - exact ({_ : RA a a0 & FR_vect A A' RA n n0 p v v'}).
 Defined.
-
 
 Definition code_vect_arg {A A' : Type} (RA : A -> A' -> Type) (n:nat) (m:nat) (p : Rnat n m) (v:vect A n) : Type.
 Proof.
@@ -467,35 +455,29 @@ Definition Equiv_vect_arg {A A' : Type} (RA : A -> A' -> Type) (n:nat) (m:nat) (
   Equiv ({v' : vect A' m & FR_vect RA n m p v v'})
         (code_vect_arg RA n m p v).
 Proof.
-  destruct v; unfold code_list_arg.
+  destruct v.
   * unshelve econstructor.
     - intros [v' r]; destruct v'.
-      + exact r.
-      + destruct p. 
+      1 : exact r. all : destruct p. 
     - unshelve eapply isequiv_adjointify.
-      -- intro r. destruct m.
-        + cbn in *.  exists [||]. exact r.
-        + destruct p. 
-      -- intros [v' r]; destruct v'; cbn.
-        + reflexivity.
-        + destruct p. 
-      -- cbn. destruct m.
-        + reflexivity.
-        + destruct p.
+      -- intro r. destruct m. 
+         1:{exists [||]. exact r. } all: destruct p. 
+      -- intros [v' r]; destruct v'.
+          1 : reflexivity. all :destruct p. 
+      -- intro r. destruct m. 
+         1 : reflexivity. all : destruct p.     
   * unshelve econstructor.
     - intros [v' r ]; destruct v'. 
-      + destruct p.
-      + cbn in *. exists a0. exists v'. exact r.  
+      2 : {cbn in *. exists a0. exists v'. exact r. }
+      all : destruct p.
     - unshelve eapply isequiv_adjointify.
       -- destruct m. 
-         + destruct p.
-         + intros [a' [v' r]]. exists (a' □ v'). exact r.
+         2 : {intros [a' [v' r]]. exists (a' □ v'). exact r. }
+         all : destruct p.
       -- intros [v' r]; destruct v'; cbn.
-         + destruct p.
-         + reflexivity.
+         2 : reflexivity. all : destruct p.
       -- destruct m.
-         + destruct p.
-         + intros [a' [v' r]]. reflexivity.
+         2 : intros [a' [v' r]]; reflexivity. all : destruct p.
 Defined.
 
 Definition IsFun_vect {A A':Type} (RA : A -> A' -> Type) (WFA : IsFun(RA)) :
@@ -549,6 +531,28 @@ Proof.
     + revert n p v'. induction v; intro ; destruct v'; cbn; try solve [destruct p].
       * reflexivity.
       * intros [Xa X]. rewrite (IHv n0 p v' X). reflexivity.
+Defined.
+
+(* visiblement cela passe aussi bien aux vect aussi
+   Je ne saurais pas juger de si c'est mieux,
+   de toute façon, il me semble que c'est un détail. *)
+Definition vectR_sym_sym_bis A A' (RA : A -> A' -> Type)
+      (n m : nat) (p : Rnat n m) :
+      forall v v', FR_vect RA n m p v v' ≃ sym (FR_vect (sym RA) m n (Rnat_sym p)) v v'.
+Proof.
+  intro v. revert p. revert m. 
+  induction v; intros m p v'; induction v'; cbn.
+  * apply Equiv_id.
+  * destruct p.
+  * destruct p.
+  * unshelve econstructor.
+    - intros [H r]. exists H. eapply IHv. exact r.
+    - unshelve eapply isequiv_adjointify.
+      -- intros [H r]. exists H. eapply IHv. exact r.
+      -- intros [H r]. apply path_sigma_uncurried; unshelve econstructor.
+        cbn. reflexivity. cbn. apply e_sect.
+      -- intros [H r]. apply path_sigma_uncurried; unshelve econstructor.
+        cbn. reflexivity. cbn. apply e_retr.
 Defined.
 
 Definition FP_vect (A A' : Type) (eA : A ⋈ A')
