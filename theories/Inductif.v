@@ -473,41 +473,50 @@ Definition Equiv_vect_arg {A A' : Type} (RA : A -> A' -> Type) (n:nat) (m:nat) (
 Proof.
   destruct v; unfold code_list_arg.
   * unshelve econstructor.
-  - intros [v r]; destruct v. exact r.
-    destruct p. 
-  - unshelve eapply isequiv_adjointify.
-    -- intro r. destruct m.
-    + cbn in *.  exists [||]. exact r.
-    + destruct p. 
-    -- intros [v r]; destruct v; cbn. reflexivity. destruct p. 
-    -- cbn. destruct m. reflexivity. destruct p.
+    - intros [v' r]; destruct v'.
+      + exact r.
+      + destruct p. 
+    - unshelve eapply isequiv_adjointify.
+      -- intro r. destruct m.
+        + cbn in *.  exists [||]. exact r.
+        + destruct p. 
+      -- intros [v' r]; destruct v'; cbn.
+        + reflexivity.
+        + destruct p. 
+      -- cbn. destruct m.
+        + reflexivity.
+        + destruct p.
   * unshelve econstructor.
-  - intros [v' r ]; destruct v'. destruct p. cbn in *.
-    exists a0. exists v'. exact r.  
-  - unshelve eapply isequiv_adjointify.
-    -- destruct m. destruct p.
-       intros [a' [l' r]]. exact (a'□l'; r).
-    -- intros [l r]; destruct l; cbn. destruct p.
-       reflexivity.
-    -- destruct m. destruct p. intros [a' [l' r]]. reflexivity.
+    - intros [v' r ]; destruct v'. 
+      + destruct p.
+      + cbn in *. exists a0. exists v'. exact r.  
+    - unshelve eapply isequiv_adjointify.
+      -- destruct m. 
+         + destruct p.
+         + intros [a' [v' r]]. exists (a' □ v'). exact r.
+      -- intros [v' r]; destruct v'; cbn.
+         + destruct p.
+         + reflexivity.
+      -- destruct m.
+         + destruct p.
+         + intros [a' [v' r]]. reflexivity.
 Defined.
 
 Definition IsFun_vect {A A':Type} (RA : A -> A' -> Type) (WFA : IsFun(RA)) :
   forall n m p, IsFun (FR_vect RA n m p).
 Proof.
   intros n m p v.
-  eapply contr_equiv2. apply Equiv_inverse.
-  apply Equiv_vect_arg.
+  eapply contr_equiv2. apply Equiv_inverse. apply Equiv_vect_arg.
   revert m p. induction v; intros m p.
-  - destruct m.
+  - destruct m; cbn.
     + apply IsContr_True.
     + destruct p. 
-  - destruct m.
+  - destruct m; cbn.
     + destruct p.
     + apply (contr_equiv2 {a':A' & RA a a'}). 2: exact (WFA a).
-      cbn. eapply EquivSigma; intro a'.
-      eapply Equiv_inverse. eapply equiv_compose.
-      eapply swap_sigma. apply IsContrSigma_codomain. intro H.
+      eapply Equiv_inverse; cbn. eapply EquivSigma; intro a'.
+      eapply equiv_compose. eapply swap_sigma. cbn.
+      apply IsContrSigma_codomain. intro H.
       eapply contr_equiv2. apply Equiv_inverse. apply Equiv_vect_arg.
       exact (IHv m p). 
 Defined.
@@ -555,8 +564,8 @@ Proof.
   apply IsFun_vect; typeclasses eauto.
   unfold rel. 
   eapply IsFun_sym. eapply vectR_sym_sym. apply IsFun_vect.
-  destruct eA as [RA FA]. destruct FA as [WF WFsym].
-  exact WFsym.
+  destruct eA as [RA FA]. destruct FA as [WFA WFAsym].
+  exact WFAsym.
 Defined.
 
 
@@ -576,7 +585,8 @@ Arguments eq_refl {_ _}. *)
 
 Definition FR_eq {A A':Type} (RA : A -> A' -> Type) 
     (x:A) (x':A') (p:RA x x') :
-  forall y y', RA y y' -> x = y -> x' = y' -> Type.
+    forall y y', RA y y' -> x = y -> x' = y' -> Type.
+Proof.
   intros y y' p' e e'. destruct e , e'.
   exact (p = p').
 Defined. 
@@ -587,7 +597,7 @@ Definition code_eq_arg {A A' : Type} (RA : A -> A' -> Type)
            (y:A) (y':A') (p':RA y y') (e : x = y): Type.
 Proof.
   destruct e.
-  + exact ({e : x' = y' & e # p = p' }).
+  + exact ({e' : x' = y' & e' # p = p' }).
 Defined.
 
 Definition Equiv_eq_arg {A A' : Type} (RA : A -> A' -> Type)
@@ -597,7 +607,7 @@ Definition Equiv_eq_arg {A A' : Type} (RA : A -> A' -> Type)
         (code_eq_arg RA x x' p y y' p' e).
 Proof.
   destruct e. unfold code_eq_arg.
-  eapply EquivSigma. intros e. destruct e. cbn.
+  eapply EquivSigma; intros e. destruct e; cbn.
   apply Equiv_id.
 Defined. 
 
@@ -615,12 +625,33 @@ Definition IsFun_eq {A A':Type} (RA : A -> A' -> Type)
   (x:A) (x':A') (xe:RA x x') :
   forall y y' ye, IsFun (FR_eq RA x x' xe y y' ye).
 Proof.
-  intros. intro e. eapply contr_equiv2. apply Equiv_inverse.
-  apply Equiv_eq_arg. destruct e. cbn.
+  intros. intro e.
+  eapply contr_equiv2. apply Equiv_inverse. apply Equiv_eq_arg.
+  destruct e. cbn.
   assert ( (x' ; xe) = (y' ; ye)).
-  unshelve eapply path_contr; exact (WFA x).
+  1: unshelve eapply path_contr; exact (WFA x).
   unshelve econstructor. exists (X..1). exact (X..2).
   intros. 
   apply (path_sigma_uncurried_eq _ (x'; xe) (y'; ye) y X).
   unshelve eapply path2_contr. exact (WFA x).
 Defined.
+
+Definition Eq_sym_sym {A A':Type} (RA : A -> A' -> Type) (x:A) (x':A') (xe : RA x x')
+    (y:A) (y':A') (ye: RA y y') :
+    forall e e', Equiv (FR_eq RA x x' xe y y' ye e e') (sym (FR_eq (sym RA) x' x xe y' y ye) e e').
+Proof.
+  intros e e'. destruct e, e'. cbn. apply Equiv_id.
+Defined.
+
+Definition FP_eq (A A' : Type) (eA : A ⋈ A') 
+    (x:A) (x':A') (xe : _R eA x x')
+    (y:A) (y':A') (ye : _R eA y y') :
+    eq A x y ⋈ eq A' x' y'.
+Proof.
+  unshelve econstructor. exact (FR_eq (_R eA) x x' xe y y' ye).
+  unshelve econstructor.
+  * apply IsFun_eq. typeclasses eauto.
+  * unfold rel. eapply IsFun_sym. apply Eq_sym_sym. apply IsFun_eq.
+    destruct eA as [RA FA]. destruct FA as [WFA WFAsym]. exact WFAsym.
+Defined.
+
