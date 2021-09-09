@@ -109,7 +109,6 @@ Proof.
   cbn. apply IsContrSigma_codomain. intro H. apply Hb. 
 Defined.
 
-
 Ltac isFun f :=
   let x := fresh "foo" in 
   intro x; induction x ;
@@ -117,8 +116,10 @@ Ltac isFun f :=
   repeat (eapply IsContr_telescope; intros); try apply IsContr_True;
   match goal with | H : _ |- _ => eapply H end. 
 
-(*** A ⊔ B ⋈ A' ⊔ B' ***)
 
+
+
+(*** A ⊔ B ⋈ A' ⊔ B' ***)
 Inductive somme (A:Type) (B:Type) : Type :=
   |inl : A -> somme A B
   |inr : B -> somme A B.
@@ -301,6 +302,130 @@ Proof.
   exact WFsym.
 Defined.
 
+
+
+(*** tree A ⋈ tree A' ***)
+Inductive tree A : Type :=
+  |nil_tree : tree A
+  |cons_tree : tree A -> A -> tree A -> tree A.
+
+Arguments nil_tree {_}.
+Arguments cons_tree {_} _ _ _.
+
+(* Notation "N(x)" :=
+  (cons_tree)
+  (at level 60, no associativity)
+  : scope. *)
+
+Notation "N(x)" :=
+  (cons_tree)
+  (at level 60, no associativity)
+  : scope.
+  
+Fixpoint FR_tree {A A' : Type} (RA : A -> A' -> Type) (t : tree A) (t' : tree A') : Type.
+Proof.
+  destruct t as [ | ls a rs], t' as [ | ls' a' rs' ].
+  - exact True.
+  - exact False.
+  - exact False.
+  - exact ({Xl : FR_tree A A' RA ls ls' & {Xa : RA a a' & FR_tree A A' RA rs rs'}}).
+Defined.
+
+Definition code_tree_arg {A A' : Type} (RA : A -> A' -> Type) (t : tree A) : Type.
+Proof.
+  destruct t as [ | ls a rs].
+  - exact (FR_tree RA nil_tree nil_tree).
+  - exact ({ls' : tree A' & {a' :A' & {rs' : tree A' & FR_tree RA (cons_tree ls a rs) (cons_tree ls' a' rs') }}}).
+Defined.
+
+Definition Equiv_tree_arg {A A' : Type} (RA : A -> A' -> Type) (t : tree A) : 
+      Equiv ({t' : tree A' & FR_tree RA t t'}) (code_tree_arg RA t).
+Proof.
+  destruct t as [ | ls a rs]; cbn.
+  * unshelve econstructor.
+    - intros [t' r]. destruct t' as [ | ls' a' rs'].
+      exact I. destruct r.
+    - unshelve eapply isequiv_adjointify.
+      -- exists nil_tree. exact H.
+      -- intros [t' r]. destruct t' as [ | ls' a' rs']; cbn in r; destruct r. 
+         reflexivity.
+      -- cbn. intro x; destruct x. reflexivity.
+  * unshelve econstructor.
+  - intros [t' r]. destruct t' as [ | ls' a' rs'].
+    destruct r. exists ls', a', rs'. exact r.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [ls' [a' [rs' r]]]. exists (cons_tree ls' a' rs'). exact r.
+    -- intros [t' r]. destruct t' as [ | ls' a' rs']; cbn in r.
+        destruct r. reflexivity.
+    -- intros [ls' [a' [rs' r]]]. reflexivity.
+Defined.
+
+Definition SigmaSigma_inv {A:Type} (B: A -> Type) {Q : forall (a:A) (b:B a), Type} :
+      Equiv ({z:{a:A & B a} & Q z.1 z.2}) ({a:A & {b: B a & Q a b}}).
+Proof.
+  apply Equiv_inverse. apply SigmaSigma.
+Qed.
+
+Definition IsFun_tree {A A' : Type} (RA : A -> A' -> Type) (WFA : IsFun RA): IsFun(FR_tree RA).
+Proof.
+  intro t. induction t;
+  eapply contr_equiv2; try (eapply Equiv_inverse; apply Equiv_tree_arg).
+  - apply IsContr_True.
+  - cbn. eapply contr_equiv2. apply Equiv_inverse. eapply EquivSigma; intro ls'; apply SigmaSigma.
+    cbn. apply (IsContr_telescope IHt1). intros ls' Xs.
+    eapply (@contr_equiv2 ({a':A' & {rs' : tree A' & {XA : RA a a' & FR_tree RA t2 rs' }}})). 
+    apply (@SigmaSigma A' (fun a' => tree A') (fun a' rs' => {_ : RA a a' & FR_tree RA t2 rs'})).
+    apply ((IsContr_telescope) (WFA a) (fun a' XA => IHt2)).
+Defined.
+
+Definition Tree_sym_sym A A' (RA : A -> A' -> Type) :
+  forall t t', FR_tree RA t t' ≃ sym (FR_tree (sym RA)) t t'.
+Proof.
+  intros t t'. unshelve econstructor.
+  - revert t'. induction t; intro t'; destruct t'; cbn; intro r; try exact r.
+    destruct r as [Xs [Xa Xr]].
+      unshelve econstructor. apply IHt1; exact Xs.
+      unshelve econstructor. exact Xa.
+      apply IHt2; exact Xr.
+  - unshelve eapply isequiv_adjointify.
+    -- revert t'. induction t; intro t'; destruct t'; cbn; intro r; try exact r.
+       destruct r as [Xs [Xa Xr]].
+       unshelve econstructor. apply IHt1; exact Xs.
+       unshelve econstructor. exact Xa.
+       apply IHt2; exact Xr.
+    -- revert t'. induction t; intro t'; destruct t'; cbn; intro r; try reflexivity.
+       destruct r as [Xs [Xa Xr]]. rewrite (IHt1 t'1 Xs). rewrite (IHt2 t'2 Xr). reflexivity. 
+    -- revert t'. induction t; intro t'; destruct t'; cbn; intro r; try reflexivity.
+       destruct r as [Xs [Xa Xr]]. rewrite (IHt1 t'1 Xs). rewrite (IHt2 t'2 Xr). reflexivity. 
+Defined.
+
+Definition Tree_sym_sym_bis A A' (RA : A -> A' -> Type) :
+  forall t t', FR_tree RA t t' ≃ sym (FR_tree (sym RA)) t t'.
+Proof.
+  intro t; induction t; intro t'; destruct t'; cbn; try (apply Equiv_id).
+  unshelve econstructor.
+  - intros [Xs [Xa Xr]]. 
+    unshelve econstructor. apply IHt1; exact Xs.
+    unshelve econstructor. exact Xa.
+    apply IHt2; exact Xr.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [Xs [Xa Xr]]. 
+       unshelve econstructor. apply IHt1; exact Xs.
+       unshelve econstructor. exact Xa.
+       apply IHt2; exact Xr.
+    -- intros [Xs [Xa Xr]]. cbn. rewrite e_sect. rewrite e_sect. reflexivity.
+    -- intros [Xs [Xa Xr]]. cbn. rewrite e_retr. rewrite e_retr. reflexivity.
+Defined.
+
+Definition FP_tree {A A':Type} (eA : A ⋈ A') : tree A ⋈ tree A'.
+Proof.
+  unshelve econstructor.
+  exact (FR_tree (_R eA)).
+  unshelve econstructor.
+  * unfold rel. apply IsFun_tree. typeclasses eauto.
+  * eapply IsFun_sym. apply Tree_sym_sym. apply IsFun_tree.
+    destruct eA as [RA [WFA WFAsym]]. exact WFAsym.
+Defined.
 
 (*** ∑(a:A) B ⋈ ∑(a':A') B' ***)
 
