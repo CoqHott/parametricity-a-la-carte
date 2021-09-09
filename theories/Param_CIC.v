@@ -109,6 +109,14 @@ Proof.
   cbn. apply IsContrSigma_codomain. intro H. apply Hb. 
 Defined.
 
+
+Ltac isFun f :=
+  let x := fresh "foo" in 
+  intro x; induction x ;
+  eapply contr_equiv2 ; try (apply Equiv_inverse; apply f);
+  repeat (eapply IsContr_telescope; intros); try apply IsContr_True;
+  match goal with | H : _ |- _ => eapply H end. 
+
 (*** A ⊔ B ⋈ A' ⊔ B' ***)
 
 Inductive somme (A:Type) (B:Type) : Type :=
@@ -156,11 +164,7 @@ Defined.
 Definition IsFun_somme {A A' B B' : Type} (RA : A -> A' -> Type) (RB : B -> B' -> Type)
   (WFA : IsFun RA) (WFB : IsFun RB) : IsFun (FR_somme RA RB).
 Proof.
-  intro x; induction x as [a | b]; 
-    eapply contr_equiv2; 
-    try (apply Equiv_inverse; apply Equiv_somme_arg); cbn.
-  * exact (WFA a).
-  * exact (WFB b).
+  isFun @Equiv_somme_arg.
 Defined.
 
 Definition Somme_sym_sym {A A' B B': Type}
@@ -253,10 +257,7 @@ Defined.
 Definition IsFun_list (A A' : Type) (RA : A -> A' -> Type)
            (WFA : IsFun RA) : IsFun (FR_list RA).
 Proof.
-  intro l. induction l ;
-  eapply contr_equiv2 ; try (apply Equiv_inverse; apply Equiv_list_arg).
-  - apply IsContr_True.
-  - apply (IsContr_telescope (WFA a) (fun _ _ => IHl)). 
+  isFun @Equiv_list_arg.  
 Defined.
 
 Definition listR_sym_sym A A' (R : A -> A' -> Type) :
@@ -354,10 +355,9 @@ Definition IsFun_sigma {A A'} {B : A -> Type} {B' : A' -> Type}
       (WFB : forall a a' (H: RA a a'), IsFun(RB a a' H)) :
       IsFun (FR_sigma RA RB).
 Proof.
-  intro x. destruct x as [a b].
-  eapply contr_equiv2; try (apply Equiv_inverse; apply Equiv_sigma_arg). cbn.
-  apply (IsContr_telescope (WFA a) (fun a' H => WFB a a' H b)).
+  isFun @Equiv_sigma_arg.
 Defined.
+
 
 Definition Sigma_sym_sym {A A'} {P : A -> Type} {P' : A' -> Type} 
   {RA : A -> A' -> Type} 
