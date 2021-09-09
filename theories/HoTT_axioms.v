@@ -225,6 +225,17 @@ Proof.
       destruct z as [a y]; cbn. reflexivity.
 Defined.
 
+Definition SigmaSigma {A:Type} (B: A -> Type) {Q : forall (a:A) (b:B a), Type} :
+      Equiv ({a:A & {b: B a & Q a b}}) ({z:{a:A & B a} & Q z.1 z.2}).
+Proof.
+  unshelve econstructor.
+  - intros [a [b c]]. exists (a;b). exact c.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [[a b] c]. exists a, b. exact c.
+    -- intros [a [b c]]. reflexivity.
+    -- intros [[a b] c]. reflexivity.
+Defined.
+
 Definition EquivPtype {A : Type} {B B' : A -> Type} (h : forall (a:A), Equiv (B a) (B' a)) :
   Equiv (forall a, B a) (forall a, B' a).
 Proof.
