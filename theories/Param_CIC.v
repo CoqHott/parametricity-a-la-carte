@@ -311,16 +311,6 @@ Inductive tree A : Type :=
 
 Arguments nil_tree {_}.
 Arguments cons_tree {_} _ _ _.
-
-(* Notation "N(x)" :=
-  (cons_tree)
-  (at level 60, no associativity)
-  : scope. *)
-
-Notation "N(x)" :=
-  (cons_tree)
-  (at level 60, no associativity)
-  : scope.
   
 Fixpoint FR_tree {A A' : Type} (RA : A -> A' -> Type) (t : tree A) (t' : tree A') : Type.
 Proof.
@@ -371,10 +361,15 @@ Proof.
   intro t. induction t;
   eapply contr_equiv2; try (eapply Equiv_inverse; apply Equiv_tree_arg).
   - apply IsContr_True.
-  - cbn. eapply contr_equiv2. apply Equiv_inverse. eapply EquivSigma; intro ls'; apply SigmaSigma.
-    cbn. apply (IsContr_telescope IHt1). intros ls' Xs.
+  - cbn.
+    eapply contr_equiv2. apply Equiv_inverse; eapply EquivSigma; intro ls'. apply SigmaSigma.
+    cbn.
+    (* utilisation telescope *)
+    apply (IsContr_telescope IHt1). intros ls' Xs.
+    (* décurry *)
     eapply (@contr_equiv2 ({a':A' & {rs' : tree A' & {XA : RA a a' & FR_tree RA t2 rs' }}})). 
-    apply (@SigmaSigma A' (fun a' => tree A') (fun a' rs' => {_ : RA a a' & FR_tree RA t2 rs'})).
+    apply (@SigmaSigma _ _ (fun a' rs' => {_ : RA a a' & FR_tree RA t2 rs'})).
+    (* next *)
     apply ((IsContr_telescope) (WFA a) (fun a' XA => IHt2)).
 Defined.
 
@@ -426,6 +421,8 @@ Proof.
   * eapply IsFun_sym. apply Tree_sym_sym. apply IsFun_tree.
     destruct eA as [RA [WFA WFAsym]]. exact WFAsym.
 Defined.
+
+
 
 (*** ∑(a:A) B ⋈ ∑(a':A') B' ***)
 
@@ -516,8 +513,6 @@ Proof.
     -- intros [H X]; reflexivity.
 Defined.
 
-
-
 Definition FP_sigma (A A' : Type) (B : A -> Type) (B' : A' -> Type) 
     (eA : A ⋈ A')
     (eB : forall (a:A) (a':A') (H: (_R eA) a a'), B a ⋈ B' a') :
@@ -587,7 +582,7 @@ Defined.
 
 Definition Equiv_vect_arg {A A' : Type} (RA : A -> A' -> Type) (n:nat) (m:nat) (p : Rnat n m) (v:vect A n) :
   Equiv ({v' : vect A' m & FR_vect RA n m p v v'})
-        (code_vect_arg RA n m p v).
+        (code_vect_arg RA n m p v).  
 Proof.
   destruct v.
   * unshelve econstructor.
@@ -617,20 +612,14 @@ Defined.
 Definition IsFun_vect {A A':Type} (RA : A -> A' -> Type) (WFA : IsFun(RA)) :
   forall n m p, IsFun (FR_vect RA n m p).
 Proof.
-  intros n m p v.
-  eapply contr_equiv2. apply Equiv_inverse. apply Equiv_vect_arg.
-  revert m p. induction v; intros m p.
+  intros n m p v. revert m p; induction v; intros m p;
+  eapply contr_equiv2; try (eapply Equiv_inverse; apply Equiv_vect_arg).
   - destruct m; cbn.
     + apply IsContr_True.
-    + destruct p. 
+    + destruct p.
   - destruct m; cbn.
     + destruct p.
-    + apply (contr_equiv2 {a':A' & RA a a'}). 2: exact (WFA a).
-      eapply Equiv_inverse; cbn. eapply EquivSigma; intro a'.
-      eapply equiv_compose. eapply swap_sigma. cbn.
-      apply IsContrSigma_codomain. intro H.
-      eapply contr_equiv2. apply Equiv_inverse. apply Equiv_vect_arg.
-      exact (IHv m p). 
+    + apply (IsContr_telescope (WFA a) (fun a' XA => IHv _ _ )). 
 Defined.
 
 Definition Rnat_sym {n m} (e: Rnat n m) : Rnat m n.
@@ -717,64 +706,32 @@ Notation "x = y" := (x = y :>_) : type_scope.
 
 Arguments eq_refl {_ _}. *)
 
-Definition FR_eq {A A':Type} (RA : A -> A' -> Type) 
-    (x:A) (x':A') (p:RA x x') :
-    forall y y', RA y y' -> x = y -> x' = y' -> Type.
-Proof.
-  intros y y' p' e e'. destruct e , e'.
-  exact (p = p').
+(* Version contracté *)
+Definition FR_eq' {A A' : Type } (RA : A -> A' -> Type)
+          (x:A) (x':A') (Xx : RA x x')
+          (y:A) (y':A') (Xy: RA y y') :
+    forall (p : x = y) (q : x' = y'), Type. 
+    intros p q. 
+    exact (transport_eq (fun x => RA x y') p (transport_eq (fun x' => RA x x') q Xx) = Xy).
 Defined. 
-  (* |eqR : FR_eq RA x x' p x x' p eq_refl eq_refl. *)
 
-Definition code_eq_arg {A A' : Type} (RA : A -> A' -> Type)
-           (x:A) (x':A') (p:RA x x')
-           (y:A) (y':A') (p':RA y y') (e : x = y): Type.
+Definition IsFun_eq' {A A' : Type } (RA : A -> A' -> Type) (WFA : IsFun(RA))
+          (x:A) (x':A') (Xx : RA x x')
+          (y:A) (y':A') (Xy: RA y y') :
+          IsFun (FR_eq' RA x x' Xx y y' Xy).
 Proof.
-  destruct e.
-  + exact ({e' : x' = y' & e' # p = p' }).
+  intro p; destruct p; unfold FR_eq'; cbn.
+  apply (contr_equiv2 ((x'; Xx) = (y'; Xy))).
+  apply (@EqSigma (A') (fun z => RA x z) (x';Xx) (y';Xy)).
+  apply contr_paths_contr. exact (WFA x).
 Defined.
 
-Definition Equiv_eq_arg {A A' : Type} (RA : A -> A' -> Type)
-           (x:A) (x':A') (p:RA x x')
-           (y:A) (y':A') (p':RA y y') (e : x = y) :
-  Equiv ({e' : x' = y' & FR_eq RA x x' p y y' p' e e'})
-        (code_eq_arg RA x x' p y y' p' e).
+Definition Eq_sym_sym {A A':Type} (RA : A -> A' -> Type)
+                      (x:A) (x':A') (Xx : RA x x')
+                      (y:A) (y':A') (Xy: RA y y') :
+    forall p q, Equiv (FR_eq RA x x' Xx y y' Xy p q) (sym (FR_eq (sym RA) x' x Xx y' y Xy) p q).
 Proof.
-  destruct e. unfold code_eq_arg.
-  eapply EquivSigma; intros e. destruct e; cbn.
-  apply Equiv_id.
-Defined. 
-
-Definition path_sigma_uncurried_eq {A : Type} (P : A -> Type) (u v : sigT P)
-           (pq : {p : u.1 = v.1 & p # u.2 = v.2})
-           (e : u = v) :
-  e = path_sigma_uncurried P u v pq -> (e..1 ; e..2) = pq.
-Proof.
-  destruct u, v. cbn in *. destruct pq. cbn. destruct x1.
-  destruct e0. intro E. cbn in *. rewrite E. reflexivity.
-Defined. 
-
-Definition IsFun_eq {A A':Type} (RA : A -> A' -> Type)
-           (WFA : IsFun(RA))
-  (x:A) (x':A') (xe:RA x x') :
-  forall y y' ye, IsFun (FR_eq RA x x' xe y y' ye).
-Proof.
-  intros. intro e.
-  eapply contr_equiv2. apply Equiv_inverse. apply Equiv_eq_arg.
-  destruct e. cbn.
-  assert ( (x' ; xe) = (y' ; ye)).
-  1: unshelve eapply path_contr; exact (WFA x).
-  unshelve econstructor. exists (X..1). exact (X..2).
-  intros. 
-  apply (path_sigma_uncurried_eq _ (x'; xe) (y'; ye) y X).
-  unshelve eapply path2_contr. exact (WFA x).
-Defined.
-
-Definition Eq_sym_sym {A A':Type} (RA : A -> A' -> Type) (x:A) (x':A') (xe : RA x x')
-    (y:A) (y':A') (ye: RA y y') :
-    forall e e', Equiv (FR_eq RA x x' xe y y' ye e e') (sym (FR_eq (sym RA) x' x xe y' y ye) e e').
-Proof.
-  intros e e'. destruct e, e'. cbn. apply Equiv_id.
+  intros p q. destruct p, q. cbn. apply Equiv_id.
 Defined.
 
 Definition FP_eq (A A' : Type) (eA : A ⋈ A') 
