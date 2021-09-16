@@ -14,6 +14,97 @@ Set Universe Polymorphism.
 (* ###    WORK IN PROGRESS : Inductives types families     ###*)
 (* ###########################################################*)
 
+(*** indexed list ***)
+
+Inductive indexed_list {A:Type} (B:Type) : A -> Type :=
+  |nil_ind_list : forall a:A, indexed_list B a 
+  |cons_ind_list : forall a:A, B -> indexed_list B a -> indexed_list B a.
+
+Arguments nil_ind_list {_ _ _}.
+Arguments cons_ind_list {_ _ _} _ _.
+  
+Notation "[* *]" := (nil_ind_list).
+Infix "**" := cons_ind_list (at level 60, right associativity).
+
+Fixpoint FR_indexed_list {A A' B B' : Type} 
+                         (RA : A -> A' -> Type)
+                         (a:A) (a':A') (Xa : RA a a')
+                         (RB : B -> B' -> Type) 
+                         (li : indexed_list B a)
+                         (li' : indexed_list B' a') : Type.
+Proof.
+  destruct li, li'.
+  - exact True.
+  - exact False.
+  - exact False.
+  - exact ({Xb : RB b b0 & FR_indexed_list A A' B B' RA a a0 Xa RB li li'}).
+Defined.
+
+Definition code_indexed_list_arg {A A' B B' : Type} 
+                         (RA : A -> A' -> Type)
+                         (a:A) (a':A') (Xa : RA a a')
+                         (RB : B -> B' -> Type) 
+                         (li : indexed_list B a) :
+                         Type.
+Proof.
+  destruct li.
+  - exact (FR_indexed_list RA a a' Xa RB ([* *]) ([* *])).
+  - exact ({b' : B' & {li' : indexed_list B' a' & FR_indexed_list RA a a' Xa RB (b**li) (b'**li')}}).
+Defined.
+
+Definition Equiv_indexed_list_arg {A A' B B' : Type} 
+                          (RA : A -> A' -> Type)
+                          (a:A) (a':A') (Xa : RA a a')
+                          (RB : B -> B' -> Type) 
+                          (li : indexed_list B a) :
+          Equiv ({li' : indexed_list B' a' & FR_indexed_list RA a a' Xa RB li li'}) (code_indexed_list_arg RA a a' Xa RB li).
+Proof.
+  destruct li; unfold code_indexed_list_arg.
+  * unshelve econstructor.
+    - intros [li' r]. destruct li'; try destruct r; try reflexivity.
+    - unshelve eapply isequiv_adjointify.
+      -- intros r. exists [* *]. exact r.
+      -- intros [li' r]. destruct li'; try destruct r; try reflexivity.
+      -- intros r; destruct r; reflexivity.
+  * unshelve econstructor.
+    - intros [li' r]. destruct li'; try destruct r.
+      exists b0, li', x. exact f.
+    - unshelve eapply isequiv_adjointify.
+      -- intros [b' [li' r]]. exists (b'**li'). exact r. 
+      -- intros [li' r]. destruct li'; try destruct r; try reflexivity.
+      -- intros [b' [li' r]]. destruct r; reflexivity.
+Defined.
+
+
+Definition IsFun_indexed_list {A A' B B' : Type} 
+                         (RA : A -> A' -> Type)
+                         (a:A) (a':A') (Xa : RA a a')
+                         (RB : B -> B' -> Type) 
+                         (WFB : IsFun RB) :
+                         IsFun(FR_indexed_list RA a a' Xa RB).
+Proof.
+  intros li. induction li;
+  eapply contr_equiv2; try (eapply Equiv_inverse; apply Equiv_indexed_list_arg).
+  * apply IsContr_True.
+  * cbn. apply (IsContr_telescope (WFB b) (fun b' Xb => IHli Xa)).
+Defined.
+
+Definition Indexed_list_sym_sym {A A' B B' : Type} 
+        (RA : A -> A' -> Type)
+        (a:A) (a':A') (Xa : RA a a')
+        (RB : B -> B' -> Type) 
+        (WFB : IsFun RB) :
+  forall li li', Equiv (FR_indexed_list RA a a' Xa RB li li')
+                       (sym (FR_indexed_list RA a a' Xa (sym RB)) li li').
+
+
+
+
+
+
+
+
+
 (*** Vect A n ⋈ Vect A' n ***)
 Inductive vect (A:Type) : nat -> Type :=
   |nil_vect : vect A 0
@@ -37,6 +128,7 @@ Fixpoint Rnat (n m : nat) : Type :=
 Fixpoint FR_vect {A A':Type} (RA : A -> A' -> Type) 
          (n m : nat) (Xn : Rnat n m) (v : vect A n) (v' : vect A' m)
          : Type.
+Proof.
   destruct v, v'.
   - exact True.
   - destruct Xn.
@@ -192,7 +284,7 @@ Definition Eq_sym_sym {A A':Type} (RA : A -> A' -> Type)
                       (y:A) (y':A') (Xy: RA y y') :
     forall p q, Equiv (FR_eq RA x x' Xx y y' Xy p q) (sym (FR_eq (sym RA) x' x Xx y' y Xy) p q).
 Proof.
-  intros p q. destruct p, q; cbn; try apply Equiv_id.
+  intros p q. destruct p, q; try apply Equiv_id.
 Defined.
 
 Definition FP_eq (A A' : Type) (eA : A ⋈ A') 
