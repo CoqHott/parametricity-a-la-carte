@@ -19,12 +19,14 @@ Typeclasses Opaque sym.
 
 Class IsWeakEquiv {A B} (R : A -> B -> Type) :=
   { isWFun :> IsFun R;
-    isWFunSym :> IsFun (sym R) }.
+    isWFunSym : IsFun (sym R) }.
 
 Arguments isFun {_ _ _} _.
 Arguments isWFun {_ _ _} _.
 Arguments isWFunSym {_ _ _} _.
 
+#[export] Hint Extern 0 (IsFun ?A)  =>
+  refine (@isWFunSym _ _ _ _) : typeclass_instances.
 
 Class Rel A B := rel : A -> B -> Type.
 
@@ -219,7 +221,7 @@ Proof.
   intros a b. apply univalence. apply EquivRabCenter.
 Defined. 
 
-Definition IsEquiv_Equiv_Equiv_FR_Type {A B : Type} : IsEquiv(Fun A B).
+Definition IsEquiv_Equiv_Equiv_FR_Type {A B : Type} : IsEquiv (Fun A B).
 Proof.
   apply: (isequiv_adjointify (Fun A B) (Fun_inv A B)) => [e|e_R] /=.
   + unshelve eapply EqEquiv.
