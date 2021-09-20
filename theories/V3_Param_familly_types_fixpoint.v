@@ -86,7 +86,7 @@ Proof.
   intros li. induction li;
   eapply contr_equiv2; try (eapply Equiv_inverse; apply Equiv_indexed_list_arg).
   * apply IsContr_True.
-  * cbn. apply (IsContr_telescope (WFB b) (fun b' Xb => IHli Xa)).
+  * cbn. apply (IsContr_telescope2 (WFB b) (fun b' Xb => IHli Xa)).
 Defined.
 
 Definition Indexed_list_sym_sym {A A' B B' : Type} 
@@ -95,13 +95,33 @@ Definition Indexed_list_sym_sym {A A' B B' : Type}
         (RB : B -> B' -> Type) 
         (WFB : IsFun RB) :
   forall li li', Equiv (FR_indexed_list RA a a' Xa RB li li')
-                       (sym (FR_indexed_list RA a a' Xa (sym RB)) li li').
+                       (sym (FR_indexed_list (sym RA) a' a Xa (sym RB)) li li').
+Proof.
+  intros li; induction li; intros li'; destruct li'; try apply Equiv_id.
+  cbn. unshelve econstructor.
+  - intros [Xb Xli]. exists Xb. apply IHli. exact Xli.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [Xb Xli]. exists Xb. apply IHli. exact Xli.
+    -- intros [Xb Xli]; cbn. 
+       apply path_sigma_uncurried; unshelve econstructor; cbn.
+       reflexivity. apply e_sect.
+    -- intros [Xb Xli]; cbn. 
+       apply path_sigma_uncurried; unshelve econstructor; cbn.
+       reflexivity. apply e_retr.
+Defined.
 
-
-
-
-
-
+Definition FP_indexed_list {A A' B B' : Type} 
+      (eA : A ⋈ A') (eB : B ⋈ B') 
+      (a:A) (a':A') (Xa : _R eA a a') :
+      (indexed_list B a) ⋈ (indexed_list B' a').
+Proof.
+  unshelve econstructor.
+  exact (FR_indexed_list (_R eA) a a' Xa (_R eB)).
+  split.
+  + apply IsFun_indexed_list; typeclasses eauto. 
+  + eapply IsFun_sym; [eapply Indexed_list_sym_sym; typeclasses eauto |
+                        apply IsFun_indexed_list ; typeclasses eauto ].
+Defined.
 
 
 
