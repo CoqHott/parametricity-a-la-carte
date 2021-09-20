@@ -891,6 +891,37 @@ Proof.
       reflexivity.
 Defined.
 
+Definition EquivSigmaNoDep {A A' : Type} {B B' : Type} 
+           (HA : Equiv A A')
+           (HB : Equiv B B') :
+  Equiv {a:A & B} {a':A' & B'}.
+Proof.
+  unshelve econstructor. 
+  * intros [x y]. exact (HA x; HB y). 
+  * unshelve eapply isequiv_adjointify.
+    + intros [x y]. refine (e_inv HA x; HB.(e_inv) y).
+    + intros [x y]. apply path_sigma_uncurried. unshelve eexists; cbn.
+      exact (e_sect HA x). rewrite transport_const. exact (e_sect HB y).
+    + intros [x y]. apply path_sigma_uncurried. unshelve eexists; cbn.
+      exact (e_retr HA x). rewrite transport_const. exact (e_retr HB y).
+Defined. 
+
+Definition EquivSigmaGen {A A' : Type} {B} {B'} 
+           (HA : Equiv A A')
+           (HB : forall a, Equiv (B a) (B' (HA a))) :
+  Equiv {a:A & B a} {a':A' & B' a'}.
+Proof.
+  unshelve econstructor. 
+  * intros [x y]. exact (HA x; HB x y). 
+  * unshelve eapply isequiv_adjointify.
+  + intros [x y]. refine (e_inv HA x; (HB (e_inv HA x)).(e_inv) _).
+    refine (transport_eq B' _ y). apply inverse. exact (e_retr HA x).
+  + intros [x y]. apply path_sigma_uncurried. unshelve eexists; cbn.
+    exact (e_sect HA x). admit. 
+  + intros [x y]. apply path_sigma_uncurried. unshelve eexists; cbn.
+    exact (e_retr HA x). admit. 
+Admitted. 
+
 Definition EquivSigma {A : Type} {B B' : A -> Type} 
   (H : forall a:A, Equiv (B a) (B' a)) : Equiv {a:A & B a} {a:A & B' a}.
 Proof.
