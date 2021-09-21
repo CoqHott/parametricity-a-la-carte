@@ -509,9 +509,6 @@ Proof.
   intro x; induction x; isFun @Equiv_sigma_arg.
 Defined.
 
-#[export] Hint Extern 0 (IsFun (FR_sigma _ _ ))  =>
-  apply IsFun_sigma: typeclass_instances.
-
 Definition Sigma_sym_sym {A A'} {P : A -> Type} {P' : A' -> Type} 
   {RA : A -> A' -> Type} 
   {RB : forall a a' (Xa : RA a a'), Rel (P a) (P' a')}
