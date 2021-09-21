@@ -200,7 +200,7 @@ Proof.
   eapply contr_equiv2; try (eapply Equiv_inverse; apply Equiv_vect_arg).
   - destruct m; try destruct Xn; try apply IsContr_True.
   - destruct m; try destruct Xn.
-    apply (IsContr_telescope2 (WFA a) (fun a' XA => IHv _ _ )). 
+    apply (IsContr_telescope (WFA a) (fun a' XA => IHv _ _ )). 
 Defined.
 
 Definition Rnat_sym {n m} (Xn: Rnat n m) : Rnat m n.
@@ -319,4 +319,9 @@ Proof.
     destruct eA as [RA FA]. destruct FA as [WFA WFAsym]. exact WFAsym.
 Defined.
 
+
+
+
+
+  
 
