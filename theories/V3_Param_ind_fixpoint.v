@@ -46,14 +46,157 @@ Proof.
   apply IsContr_telescope2; auto.  
 Defined.
 
+Definition IsContr_telescope4 {A} {RA : A -> Type}
+           {B :A -> Type}
+           {RB : forall a, RA a -> B a -> Type}
+           {C : forall a, B a -> Type}
+           {RC : forall a (Ra : RA a) (b : B a) , RB a Ra b -> C a b -> Type}
+           {D : forall a (b : B a), C a b -> Type}
+           {RD : forall a (Ra : RA a) (b : B a) (Rb : RB a Ra b) (c : C a b)
+                        (Rc : RC a Ra b Rb c), D a b c -> Type}           
+  : IsContr {a:A & RA a} ->
+    (forall a Xa, IsContr {b : B a & RB a Xa b}) ->
+    (forall a Xa b Xb, IsContr {c : C a b & RC a Xa b Xb c}) ->
+    (forall a Xa b Xb c Xc, IsContr {d : D a b c & RD a Xa b Xb c Xc d}) ->
+    IsContr {a : A & {b : B a & {c : C a b & { d : D a b c &
+            {Xa : RA a & {Xb : RB a Xa b & { Xc : RC a Xa b Xb c & RD a Xa b Xb c Xc d}}}}}}}.
+Proof.
+  intros WFa WFb WFc WFd.
+  apply (contr_equiv2 {a : A & RA a}); try apply WFa.
+  apply EquivSigma. intro a. eapply Equiv_inverse.
+  eapply equiv_compose. eapply EquivSigma. intro.
+  eapply equiv_compose. eapply EquivSigma. intro.
+  eapply swap_sigma. cbn. 
+  eapply swap_sigma. cbn. 
+  eapply equiv_compose. eapply swap_sigma. cbn.
+  cbn. apply IsContrSigma_codomain. intro Ha.
+  apply IsContr_telescope3; auto.  
+Defined.
+
+Definition IsContr_telescope5 {A} {RA : A -> Type}
+           {B :A -> Type}
+           {RB : forall a, RA a -> B a -> Type}
+           {C : forall a, B a -> Type}
+           {RC : forall a (Ra : RA a) (b : B a) , RB a Ra b -> C a b -> Type}
+           {D : forall a (b : B a), C a b -> Type}
+           {RD : forall a (Ra : RA a) (b : B a) (Rb : RB a Ra b) (c : C a b)
+                        (Rc : RC a Ra b Rb c), D a b c -> Type}           
+           {E : forall a (b : B a) (c: C a b), D a b c -> Type}
+           {RE : forall a (Ra : RA a) (b : B a) (Rb : RB a Ra b)
+                        (c : C a b) (Rc : RC a Ra b Rb c)
+                        (d : D a b c) (Rd : RD a Ra b Rb c Rc d),
+               E a b c d -> Type}           
+  : IsContr {a:A & RA a} ->
+    (forall a Xa, IsContr {b : B a & RB a Xa b}) ->
+    (forall a Xa b Xb, IsContr {c : C a b & RC a Xa b Xb c}) ->
+    (forall a Xa b Xb c Xc, IsContr {d : D a b c & RD a Xa b Xb c Xc d}) ->
+    (forall a Xa b Xb c Xc d Xd,
+        IsContr {e : E a b c d & RE a Xa b Xb c Xc d Xd e}) ->
+    IsContr {a : A & {b : B a & {c : C a b & { d : D a b c & { e : E a b c d &
+            {Xa : RA a & {Xb : RB a Xa b & { Xc : RC a Xa b Xb c & {Xd : RD a Xa b Xb c Xc d & RE a Xa b Xb c Xc d Xd e}}}}}}}}}.
+Proof.
+  intros WFa WFb WFc WFd WFe.
+  apply (contr_equiv2 {a : A & RA a}); try apply WFa.
+  apply EquivSigma. intro a. eapply Equiv_inverse.
+  eapply equiv_compose. eapply EquivSigma. intro.
+  eapply equiv_compose. eapply EquivSigma. intro.
+  eapply equiv_compose. eapply EquivSigma. intro.
+  eapply swap_sigma. cbn. 
+  eapply swap_sigma. cbn. 
+  eapply swap_sigma. cbn. 
+  eapply equiv_compose. eapply swap_sigma. cbn.
+  cbn. apply IsContrSigma_codomain. intro Ha.
+  apply IsContr_telescope4; auto.  
+Defined.
+
 Ltac isFun f :=
-  let x := fresh "foo" in 
-  intro x; induction x ;
   eapply contr_equiv2 ; try (apply Equiv_inverse; apply f);
-  try first [ eapply IsContr_telescope3 |
+  try first [ eapply IsContr_telescope5 |
+              eapply IsContr_telescope4 |
+              eapply IsContr_telescope3 |
               eapply IsContr_telescope2 |
-              apply IsContr_True ];
-  intros; match goal with | H : _ |- _ => eapply H end. 
+              idtac 
+             ];
+  try first [
+        intros; match goal with | H : _ |- _ => eapply H end |
+        cbn; typeclasses eauto ].
+
+Ltac FP fFR :=
+  unshelve econstructor;
+  [ repeat (match goal with | H : _ ⋈ _ |- _ => let a := fresh "a" in pose (a := _R H) ; clearbody a; clear H end); 
+      unfold Rel; simple apply fFR; eassumption |
+    split ; typeclasses eauto ].
+
+Ltac isFunSym fsym :=
+  eapply IsFun_sym; [ eapply fsym | typeclasses eauto ].
+
+#[export] Hint Unfold sym : typeclass_instances.
+
+
+(* ###########################################################*)
+(* ###                     nat ⋈ nat                       ###*)
+(* ###########################################################*)
+
+
+Fixpoint FR_nat (n m : nat) : Type :=
+  match n , m with
+    | 0 , 0 => True
+    | S n , S m => FR_nat n m
+    | _ , _ => False
+  end.
+
+Definition code_nat_arg (n : nat) : 
+  Type :=
+  match n with
+    0 => FR_nat 0 0
+  | S n => {m : nat & FR_nat (S n) (S m)}
+  end. 
+
+Definition Equiv_nat_arg (n : nat) : 
+  Equiv ({m : nat & FR_nat n m}) (code_nat_arg n). 
+Proof.
+  destruct n as [ | n ]; unshelve econstructor ; cbn. 
+  - exact (fun lr => match lr with
+                         ( 0 ; r ) => I
+                       | ( S m ; r ) => match r with end  
+                       end).
+  - exact (fun lr => match lr with
+                         ( 0 ; r ) => match r with end 
+                       | ( S m ; r ) => (m ; r)
+                       end).
+  - unshelve eapply isequiv_adjointify.
+    -- intros r. exact (0 ; r).
+    -- intros [[| n] []]; reflexivity. 
+    -- intros []. reflexivity.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [m r]. exact (S m ; r ).
+    -- intros [[ | m] r]; [ destruct r | reflexivity ].
+    -- intros [m r]; try reflexivity.
+Defined.
+
+Instance IsFun_nat : IsFun FR_nat.
+Proof.
+  intro n; induction n; isFun @Equiv_nat_arg.
+Defined.
+
+Fixpoint Nat_sym_sym x : 
+      forall y, Equiv (FR_nat x y) (sym FR_nat x y) :=
+  fun y => match x , y with
+    0 , 0 => Equiv_id True
+  | 0 , S _ => Equiv_id False
+  | S _ , 0 => Equiv_id False
+  | S n , S m => Nat_sym_sym n m
+  end. 
+
+Instance IsFun_sym_nat : IsFun (sym FR_nat). 
+Proof.
+  isFunSym @Nat_sym_sym.
+Defined.
+  
+Definition FP_nat : nat ⋈ nat.
+Proof.
+  FP @FR_nat.
+Defined.
 
 
 (* ###########################################################*)
@@ -109,14 +252,14 @@ Proof.
     -- intros [b' r]; try reflexivity.
 Defined.
 
-Definition IsFun_somme {A A' B B' : Type} 
+Instance IsFun_somme {A A' B B' : Type} 
                        (RA : A -> A' -> Type)
                        (RB : B -> B' -> Type)
                        (WFA : IsFun RA)
                        (WFB : IsFun RB) :
                        IsFun (FR_somme RA RB).
 Proof.
-  isFun @Equiv_somme_arg.
+  intro x; induction x; isFun @Equiv_somme_arg.
 Defined.
 
 Definition Somme_sym_sym {A A' B B': Type}
@@ -130,17 +273,20 @@ Definition Somme_sym_sym {A A' B B': Type}
   | inr b , inr b' => Equiv_id (RB b b')
   end. 
 
-Definition FP_somme {A A' B B' : Type} (eA : A ⋈ A') (eB : B ⋈ B') : (A ⊔ B) ⋈ (A' ⊔ B').
+Instance IsFun_sym_somme {A A' B B' : Type} 
+                       (RA : A -> A' -> Type)
+                       (RB : B -> B' -> Type)
+                       (WFA : IsFun (sym RA))
+                       (WFB : IsFun (sym RB)) :
+                       IsFun (sym (FR_somme RA RB)).
 Proof.
-  unshelve econstructor.
-  - exact (FR_somme (_R eA) (_R eB)).
-  - split.
-    + apply IsFun_somme; typeclasses eauto.
-    + eapply IsFun_sym; [ eapply Somme_sym_sym |
-                          apply IsFun_somme ; typeclasses eauto ].
+  isFunSym @Somme_sym_sym.
 Defined.
 
-
+Definition FP_somme {A A' B B' : Type} (eA : A ⋈ A') (eB : B ⋈ B') : (A ⊔ B) ⋈ (A' ⊔ B').
+Proof.
+  FP @FR_somme.
+Defined.
 
 (* ###########################################################*)
 (* ###                   list A ⋈ list A'                 ###*)
@@ -195,10 +341,10 @@ Proof.
     -- intros [a' [l' []]]; reflexivity.
 Defined.
 
-Definition IsFun_list (A A' : Type) (RA : A -> A' -> Type)
+Instance IsFun_list (A A' : Type) (RA : A -> A' -> Type)
            (WFA : IsFun RA) : IsFun (FR_list RA).
 Proof.
-  isFun @Equiv_list_arg.  
+  intro l; induction l; isFun @Equiv_list_arg.  
 Defined.
 
 Fixpoint listR_sym_sym A A' (R : A -> A' -> Type) (l : list A) : forall l',
@@ -211,15 +357,16 @@ Fixpoint listR_sym_sym A A' (R : A -> A' -> Type) (l : list A) : forall l',
     | cons a l , cons a' l' => EquivSigma (fun r => listR_sym_sym _ _ _ l l')
     end.
 
+Instance IsFun_sym_list (A A' : Type) (RA : A -> A' -> Type)
+           (WFA : IsFun (sym RA)) : IsFun (sym (FR_list RA)).
+Proof.
+  isFunSym @listR_sym_sym.
+Defined.
+
 Definition FP_list (A A' : Type) (eA : A ⋈ A'):
   list A ⋈ list A'.
 Proof.
-  unshelve econstructor.
-  - exact (FR_list (_R eA)).
-  - split.
-    + apply IsFun_list; typeclasses eauto.
-    + eapply IsFun_sym; [ eapply listR_sym_sym |
-                          apply IsFun_list ; typeclasses eauto ].
+  FP @FR_list.
 Defined.
 
 
@@ -273,10 +420,10 @@ Proof.
     -- intros [ls' [a' [rs' r]]]. destruct r. reflexivity.
 Defined.
 
-Definition IsFun_tree {A A' : Type} (RA : A -> A' -> Type)
+Instance IsFun_tree {A A' : Type} (RA : A -> A' -> Type)
                       (WFA : IsFun RA): IsFun(FR_tree RA).
 Proof.
-  isFun @Equiv_tree_arg.  
+  intro t; induction t; isFun @Equiv_tree_arg.  
 Defined.
 
 Fixpoint Tree_sym_sym A A' (RA : A -> A' -> Type) (t : tree A) :
@@ -292,14 +439,15 @@ Fixpoint Tree_sym_sym A A' (RA : A -> A' -> Type) (t : tree A) :
                         (Tree_sym_sym A A' RA rs rs')) 
     end.
 
+Instance IsFun_sym_tree {A A' : Type} (RA : A -> A' -> Type)
+         (WFA : IsFun (sym RA)): IsFun (sym (FR_tree RA)).
+Proof.
+  isFunSym  @Tree_sym_sym.
+Defined. 
+
 Definition FP_tree {A A':Type} (eA : A ⋈ A') : tree A ⋈ tree A'.
 Proof.
-  unshelve econstructor.
-  - refine (FR_tree (_R eA)).
-  - split.
-    + apply IsFun_tree; typeclasses eauto.
-    + eapply IsFun_sym; [ eapply Tree_sym_sym |
-                          apply IsFun_tree ; typeclasses eauto ].
+  FP @FR_tree.
 Defined.
 
 (* ###########################################################*)
@@ -351,14 +499,14 @@ Proof.
     -- intros [a' [b' r]]; try destruct r; try reflexivity.
 Defined.
 
-Definition IsFun_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
+Instance IsFun_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
       {RA : A -> A' -> Type} 
       {RB : forall a a' (Xa : RA a a'), Rel (B a) (B' a')} 
       (WFA : IsFun RA)
       (WFB : forall a a' (Xa : RA a a'), IsFun(RB a a' Xa)) :
       IsFun (FR_sigma RA RB).
 Proof.
-  isFun @Equiv_sigma_arg.
+  intro x; induction x; isFun @Equiv_sigma_arg.
 Defined.
 
 Definition Sigma_sym_sym {A A'} {P : A -> Type} {P' : A' -> Type} 
@@ -372,15 +520,25 @@ Definition Sigma_sym_sym {A A'} {P : A -> Type} {P' : A' -> Type}
                                            (fun X => Equiv_id _)
     end.
 
+Instance IsFun_sym_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
+      {RA : A -> A' -> Type} 
+      {RB : forall a a' (Xa : RA a a'), Rel (B a) (B' a')} 
+      (WFA : IsFun (sym RA))
+      (WFB : forall a a' (Xa : RA a a'), IsFun (sym (RB a a' Xa))) :
+      IsFun (sym (FR_sigma RA RB)).
+Proof.
+  isFunSym @Sigma_sym_sym.
+Defined. 
+
 Definition FP_sigma (A A' : Type) (B : A -> Type) (B' : A' -> Type) 
     (eA : A ⋈ A')
     (eB : forall (a:A) (a':A') (Xa: (_R eA) a a'), B a ⋈ B' a') :
     {a:A & B a} ⋈ {a':A' & B' a'}.
 Proof.
- unshelve econstructor.
+  unshelve econstructor.
   - refine (FR_sigma (_R eA) (fun a a' Xa => _R (eB a a' Xa))).
   - split.
-    + apply IsFun_sigma; typeclasses eauto.
+    + typeclasses eauto.
     + eapply IsFun_sym; [ eapply Sigma_sym_sym |
                           apply IsFun_sigma ; typeclasses eauto ].
 Defined.
