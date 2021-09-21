@@ -251,7 +251,7 @@ Proof.
 Defined.
 
 (* Lemmas using IsContr *)
-Definition IsContr_True : IsContr True.
+Instance IsContr_True : IsContr True.
 Proof.
   unshelve econstructor. exact I.
   intro y; destruct y; reflexivity.
