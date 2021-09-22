@@ -293,8 +293,8 @@ Inductive vectF (A:Type) (n : nat) : Type :=
 Arguments nilF {_ _} _.
 Arguments consF {_ _} _ _ _ _.
 
-Fixpoint FRvectF {A A':Type} (RA : A -> A' -> Type) 
-         (n m : nat) (Xn : FR_nat n m) (v : vectF A n)
+Fixpoint FRvectF {A A':Type} (RA : Rel A A') 
+         (n m : nat) (Xn : n ≈ m) (v : vectF A n)
   : forall  (v' : vectF A' m) , Type :=
   fun v' => match v , v' with
   | nilF e , nilF e' => FR_eq FR_nat _ _ Xn 0 0 I e e'
@@ -304,6 +304,10 @@ Fixpoint FRvectF {A A':Type} (RA : A -> A' -> Type)
     {Rm : FR_nat m m' & { _ : RA a a' &
     { _ : FRvectF RA _ _  Rm v v' & FR_eq FR_nat (S m) (S m') Rm _ _ Xn e e' }}}
   end.
+
+Instance Rel_vectF {A A':Type} (RA : Rel A A') 
+         (n m : nat) (Xn : n ≈ m) : Rel (vectF A n) (vectF A' m)
+  := FRvectF RA n m Xn. 
 
 Definition codeF_arg {A A' : Type} (RA : A -> A' -> Type)
       (n:nat) (m:nat) (Xn : FR_nat n m) (v:vectF A n) : Type
@@ -411,13 +415,17 @@ Proof.
   induction v; intros; isFun @EquivVectF_argSym.  
 Defined.
 
-Definition FP_vectF (A A' : Type) (eA : A ⋈ A')
-  (n m : nat) (Xn : FR_nat n m) :
-  vectF A n ⋈ vectF A' m.
-Proof.
-  FP @FRvectF.
-Defined.
+Definition _FP_vectR : @vectF ≈ @vectF.
+  intros A A' eA n m en. FP.
+Defined. 
 
+Instance FP_vectF (A A' : Type) (eA : A ⋈ A')
+  (n m : nat) (Xn : n ≈ m) :
+  vectF A n ⋈ vectF A' m.
+(* weird issue with universes here *)
+Fail exact (_FP_vectR A A' eA n m Xn).
+FP. 
+Defined. 
 
 
 

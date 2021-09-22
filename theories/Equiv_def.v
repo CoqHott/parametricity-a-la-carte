@@ -56,7 +56,11 @@ Proof.
   by move=> Rwe; split; [apply: isWFunSym|apply isWFun].
 Defined.
 
-
+Definition FR_sym {A B} : A ⋈ B -> B ⋈ A.
+Proof.
+  unshelve econstructor. exact (sym (_R X)).
+  apply IsWeakEquiv_sym. typeclasses eauto. 
+Defined.
 
 (*** Properties about FR_Type *)
 

@@ -52,6 +52,8 @@ Definition FR_Forall {A A'} {B : A -> Type} {B' : A' -> Type} (RA : Rel A A')
   :=
   fun f g => forall x y (H:x ≈ y), f x ≈ g y.
 
+#[export] Hint Extern 0 (Rel (forall x:_ , _) (forall x:_ , _)) =>
+ refine (FR_Forall _ _) ; intros : typeclass_instances.
 
 Definition IsFun_forall (A A' : Type) (B : A -> Type) (B' : A' -> Type)
   (RA : Rel A A') (RAEquiv : IsWeakEquiv RA)
@@ -84,14 +86,13 @@ Proof.
   unshelve econstructor; compute => //=.
 Defined. 
 
-Definition FP_forall (A A' : Type) (eA : A ⋈ A')
+Instance FP_forall (A A' : Type) (eA : A ⋈ A')
            (B : A -> Type) (B' : A' -> Type) 
            (eB : forall (a:A) (a':A') (H: (_R eA) a a'), B a ⋈ B' a') :
   (forall x : A,
       B x) ⋈ (forall x : A', B' x).
 Proof.
   unshelve econstructor. 
-  * unshelve eapply FR_Forall. intros. apply (eB _ _ H).
   * split.
     + apply IsFun_forall; typeclasses eauto.
     + eapply IsFun_sym. eapply Forall_sym_sym. apply IsFun_forall.
