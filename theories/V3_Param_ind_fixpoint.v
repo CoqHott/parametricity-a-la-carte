@@ -165,7 +165,7 @@ Proof.
                        | ( S m ; r ) => (m ; r)
                        end).
   - unshelve eapply isequiv_adjointify.
-    -- intros r. exact (0 ; r).
+    -- exact (fun r => (0 ; r)).
     -- intros [[| n] []]; reflexivity. 
     -- intros []. reflexivity.
   - unshelve eapply isequiv_adjointify.
