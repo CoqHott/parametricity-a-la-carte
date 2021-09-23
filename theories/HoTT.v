@@ -29,6 +29,10 @@ Section projections.
 
 End projections.
 
+Inductive unit : Type := tt. 
+
+Inductive empty : Type :=. 
+
 Inductive eq@{i} (A:Type@{i}) (x:A) : A -> Type@{i} :=
     eq_refl : eq A x x.
 

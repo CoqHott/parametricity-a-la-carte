@@ -29,9 +29,9 @@ Fixpoint FR_indexed_list {A A' B B' : Type}
                          (a:A) (a':A') (li : indexed_list B a)
   : forall (li' : indexed_list B' a') (Xa : RA a a') , Type :=
   fun li' => match li , li' with
-  | [* *] , [* *] => fun Xa => True
-  | [* *] , b' ** l' =>  fun Xa => False
-  | b ** l , [* *]  => fun Xa => False
+  | [* *] , [* *] => fun Xa => unit
+  | [* *] , b' ** l' =>  fun Xa => empty
+  | b ** l , [* *]  => fun Xa => empty
   | b ** l , b' ** l' =>
     fun Xa => {Xb : RB b b' & FR_indexed_list RA RB _ _ l l' Xa}
   end.
@@ -91,9 +91,9 @@ Fixpoint Indexed_list_sym_sym {A A' B B' : Type}
                                               (sym (fun l l' => FR_indexed_list (sym RA) (sym RB) a' a l l' Xa)) li li' :=
   fun li' =>
     match li , li' with
-      [* *] , [* *] => fun _ => Equiv_id True
-    | [* *] , b' ** l' => fun _ => Equiv_id False
-    | b ** l , [* *] => fun _ => Equiv_id False
+      [* *] , [* *] => fun _ => Equiv_id unit
+    | [* *] , b' ** l' => fun _ => Equiv_id empty
+    | b ** l , [* *] => fun _ => Equiv_id empty
     | b ** l , b' ** l' =>
       fun Xa => EquivSigma (fun r => Indexed_list_sym_sym RA _ _ RB WFB  l l' Xa)
     end.
@@ -134,9 +134,9 @@ Fixpoint FR_vect {A A':Type} (RA : A -> A' -> Type)
          (n m : nat) (v : vect A n)
   : forall  (v' : vect A' m) (Xn : FR_nat n m) , Type :=
   fun v' => match v , v' with
-  | [| |] , [| |] => fun Xn => True
-  | [| |] , a' □ v' => fun Xn => False
-  | a □ v , [| |] => fun Xn => False
+  | [| |] , [| |] => fun Xn => unit
+  | [| |] , a' □ v' => fun Xn => empty
+  | a □ v , [| |] => fun Xn => empty
   | a □ v , a' □ v' => fun Xn =>
                          {_ : RA a a' & FR_vect RA _ _  v v' Xn}
   end.
@@ -155,7 +155,7 @@ Definition code_vect_arg {A A' : Type} (RA : A -> A' -> Type)
     | a □ v =>
       fun m =>
         match m with
-        | 0 => fun _ => False
+        | 0 => fun _ => empty
         | S m => fun Xn =>
                    {a':A' & {v':vect A' m &
                                 FR_vect RA (S _) (S m) (a □ v) (a' □ v') Xn}}
@@ -191,7 +191,7 @@ Definition IsFun_vect {A A':Type} (RA : A -> A' -> Type) (WFA : IsFun(RA)) :
 Proof.
   intros n m Xn v. revert m Xn. induction v; intros m Xn;
   eapply contr_equiv2; try (eapply Equiv_inverse; apply Equiv_vect_arg).
-  - destruct m; try destruct Xn. apply IsContr_True.
+  - destruct m; try destruct Xn. apply IsContr_unit.
   - destruct m; try destruct Xn.
     apply (IsContr_telescope2 (WFA a) (fun a' _ => IHv _ Xn)). 
 Defined.
@@ -202,9 +202,9 @@ Fixpoint  vectR_sym_sym {A A'} (RA : A -> A' -> Type)
                sym (fun v v' => FR_vect (sym RA) m n v v' Xn) v v' :=
   fun m v' =>
     match v , v' with
-      [| |] , [| |] => fun _ => Equiv_id True 
-    | [| |] , cons_vect a' l' => fun _ => Equiv_id False
-    | cons_vect a l , [| |] => fun _ => Equiv_id False
+      [| |] , [| |] => fun _ => Equiv_id unit 
+    | [| |] , cons_vect a' l' => fun _ => Equiv_id empty
+    | cons_vect a l , [| |] => fun _ => Equiv_id empty
     | cons_vect a l , cons_vect a' l' => fun Xn => EquivSigma (fun r => vectR_sym_sym RA _ l _ l' Xn)
     end.
 
@@ -293,24 +293,24 @@ Inductive vectF (A:Type) (n : nat) : Type :=
 Arguments nilF {_ _} _.
 Arguments consF {_ _} _ _ _ _.
 
-Fixpoint FRvectF {A A':Type} (RA : Rel A A') 
+Fixpoint FRvectF {A A':Type} (RA : A ≈ A') 
          (n m : nat) (Xn : n ≈ m) (v : vectF A n)
   : forall  (v' : vectF A' m) , Type :=
   fun v' => match v , v' with
-  | nilF e , nilF e' => FR_eq FR_nat _ _ Xn 0 0 I e e'
-  | nilF e , consF m' a' v' e' => False
-  | consF m a v e , nilF e' => False
+  | nilF e , nilF e' => FR_eq FR_nat _ _ Xn 0 0 tt e e'
+  | nilF e , consF m' a' v' e' => empty
+  | consF m a v e , nilF e' => empty
   | consF m a v e , consF m' a' v' e' => 
-    {Rm : FR_nat m m' & { _ : RA a a' &
+    {Rm : FR_nat m m' & { _ : (_R RA) a a' &
     { _ : FRvectF RA _ _  Rm v v' & FR_eq FR_nat (S m) (S m') Rm _ _ Xn e e' }}}
   end.
 
-Instance Rel_vectF {A A':Type} (RA : Rel A A') 
+Instance Rel_vectF {A A':Type} (RA : A ≈ A') 
          (n m : nat) (Xn : n ≈ m) : Rel (vectF A n) (vectF A' m)
   := FRvectF RA n m Xn. 
 
-Definition codeF_arg {A A' : Type} (RA : A -> A' -> Type)
-      (n:nat) (m:nat) (Xn : FR_nat n m) (v:vectF A n) : Type
+Definition codeF_arg {A A' : Type} (RA : A ≈ A')
+      (n:nat) (m:nat) (Xn : n ≈ m) (v:vectF A n) : Type
   :=
     match v with
       nilF e => { e' : m = 0 & FRvectF RA n m Xn (nilF e) (nilF e') }
@@ -319,8 +319,8 @@ Definition codeF_arg {A A' : Type} (RA : A -> A' -> Type)
       FRvectF RA n m Xn (consF n' a v e) (consF m' a' v' e')}}}}
     end.
 
-Definition EquivVectF_arg {A A' : Type} (RA : A -> A' -> Type)
-      (n:nat) (m:nat) (Xn : FR_nat n m) (v:vectF A n) :
+Definition EquivVectF_arg {A A' : Type} (RA : A ≈ A')
+      (n:nat) (m:nat) (Xn : n ≈ m) (v:vectF A n) :
   Equiv ({v' : vectF A' m & FRvectF RA n m Xn v v'})
         (codeF_arg RA n m Xn v).  
 Proof.
@@ -369,15 +369,15 @@ Proof.
 #[export] Hint Extern 0 (IsContr { _ : nat & _})  =>
   apply IsFun_sym_nat: typeclass_instances.
 
-Instance IsFunF {A A':Type} (RA : A -> A' -> Type) (WFA : IsFun(RA)) :
-  forall n m Xn, IsFun (FRvectF RA n m Xn).
+Definition IsFunF {A A' : Type} (RA : A ≈ A') :
+  forall n m Xn, IsFun (Rel_vectF RA n m Xn).
 Proof.
   intros n m Xn. intro v. revert m Xn.
   induction v; intros; isFun @EquivVectF_arg.
 Defined.
 
-Definition codeF_arg_sym {A A' : Type} (RA : A -> A' -> Type)
-      (n:nat) (m:nat) (Xn : FR_nat n m) (v:vectF A' m) : Type
+Definition codeF_arg_sym {A A' : Type} (RA : A ≈ A')
+      (n:nat) (m:nat) (Xn : n ≈ m) (v:vectF A' m) : Type
   :=
     match v with
       nilF e' => { e : n = 0 & FRvectF RA n m Xn (nilF e) (nilF e') }
@@ -386,8 +386,8 @@ Definition codeF_arg_sym {A A' : Type} (RA : A -> A' -> Type)
       FRvectF RA n m Xn (consF n' a v e) (consF m' a' v' e')}}}}
     end.
 
-Definition EquivVectF_argSym {A A' : Type} (RA : A -> A' -> Type)
-      (n:nat) (m:nat) (Xn : FR_nat n m) (v':vectF A' m) :
+Definition EquivVectF_argSym {A A' : Type} (RA : A ≈ A')
+      (n:nat) (m:nat) (Xn : n ≈ m) (v':vectF A' m) :
   Equiv ({v : vectF A n & FRvectF RA n m Xn v v'})
         (codeF_arg_sym RA n m Xn v').  
 Proof.
@@ -408,24 +408,26 @@ Proof.
       -- intros [m' [ a' [ v' [e' r]]]]. reflexivity.
 Defined.
 
-Instance IsFunFSym {A A':Type} (RA : A -> A' -> Type) (WFA : IsFun (sym RA)) :
+Instance IsFunFSym {A A':Type} (RA : A ≈ A') :
   forall n m Xn, IsFun (sym (FRvectF RA n m Xn)).
 Proof.
   intros n m Xn. intro v. revert n Xn. unfold sym. 
   induction v; intros; isFun @EquivVectF_argSym.  
 Defined.
 
+#[export] Hint Extern 0 (IsFun _ ) =>
+  apply IsFunF: typeclass_instances.
+
+#[export] Hint Extern 0 (IsFun _ ) =>
+  apply IsFunFSym: typeclass_instances.
+
 Definition _FP_vectR : @vectF ≈ @vectF.
-  intros A A' eA n m en. FP.
+  intros A A' eA n m en. FP. 
 Defined. 
 
-Instance FP_vectF (A A' : Type) (eA : A ⋈ A')
+Instance FP_vectF (A A' : Type) (eA : A ≈ A')
   (n m : nat) (Xn : n ≈ m) :
-  vectF A n ⋈ vectF A' m.
-(* weird issue with universes here *)
-Fail exact (_FP_vectR A A' eA n m Xn).
-FP. 
-Defined. 
+  vectF A n ⋈ vectF A' m := _FP_vectR A A' eA n m Xn.
 
 
 

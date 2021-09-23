@@ -257,6 +257,12 @@ Proof.
   intro y; destruct y; reflexivity.
 Defined.
 
+Instance IsContr_unit : IsContr unit.
+Proof.
+  unshelve econstructor. exact tt.
+  intro y; destruct y; reflexivity.
+Defined.
+
 Definition fib {A B : Type} (f:A->B) (b:B) : Type :=
   {a:A & f(a) = b}.
 
