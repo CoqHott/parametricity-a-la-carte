@@ -109,7 +109,7 @@ Proof.
   apply IsContr_telescope4; auto.  
 Defined.
 
-Ltac erefine f  := first [ refine f | refine (f _) | refine (f _ _) | refine (f _ _ _) | refine (f _ _ _ _) | refine (f _ _ _ _ _) | refine (f _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _) ].
+Ltac erefine f  := first [ refine f | refine (f _) | refine (f _ _) | refine (f _ _ _) | refine (f _ _ _ _) | refine (f _ _ _ _ _) | refine (f _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _ _ _ _)  ].
 
 Ltac isFun f :=
   eapply contr_equiv2 ; try (apply Equiv_inverse; erefine f);
@@ -126,8 +126,8 @@ Ltac isFun f :=
 Ltac FP :=
    unshelve econstructor; split ; typeclasses eauto.
 
-Ltac isFunSym fsym :=
-  eapply IsFun_sym; [ eapply fsym | typeclasses eauto ].
+(* Ltac isFunSym fsym := *)
+(*   eapply IsFun_sym; [ eapply fsym | typeclasses eauto ]. *)
 
 #[export] Hint Unfold sym : typeclass_instances.
 
@@ -184,18 +184,38 @@ Proof.
   intro n; induction n; isFun @Equiv_nat_arg.
 Defined.
 
-Fixpoint Nat_sym_sym x : 
-      forall y, Equiv (x ≈ y) (y ≈ x) :=
-  fun y => match x , y with
-    0 , 0 => Equiv_id unit
-  | 0 , S _ => Equiv_id empty
-  | S _ , 0 => Equiv_id empty
-  | S n , S m => Nat_sym_sym n m
-  end. 
+Definition code_nat_arg_sym (n : nat) : 
+  Type :=
+  match n with
+    0 => FR_nat 0 0
+  | S n => {m : nat & FR_nat (S m) (S n)}
+  end.
+
+Definition Equiv_nat_arg_sym (m : nat) : 
+  Equiv ({n : nat & n ≈ m}) (code_nat_arg_sym m). 
+Proof.
+  destruct m as [ | m ]; unshelve econstructor ; cbn. 
+  - exact (fun lr => match lr with
+                         ( 0 ; r ) => tt
+                       | ( S m ; r ) => match r with end  
+                       end).
+  - exact (fun lr => match lr with
+                         ( 0 ; r ) => match r with end 
+                       | ( S n ; r ) => (n ; r)
+                       end).
+  - unshelve eapply isequiv_adjointify.
+    -- exact (fun r => (0 ; r)).
+    -- intros [[| n] []]; reflexivity. 
+    -- intros []. reflexivity.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [n r]. exact (S n ; r ).
+    -- intros [[ | n] r]; [ destruct r | reflexivity ].
+    -- intros [n r]; try reflexivity.
+Defined.
 
 Instance IsFun_sym_nat : IsFun (sym FR_nat). 
 Proof.
-  isFunSym @Nat_sym_sym.
+  intro n; induction n; isFun @Equiv_nat_arg_sym.
 Defined.
   
 Instance FP_nat : nat ⋈ nat.
@@ -424,14 +444,14 @@ Inductive tree A : Type :=
 Arguments nil_tree {_}.
 Arguments cons_tree {_} _ _ _.
   
-Fixpoint FR_tree {A A' : Type} (RA : A ≈ A') (t : tree A) (t' : tree A') : Type.
-Proof.
-  destruct t as [ | ls a rs], t' as [ | ls' a' rs' ].
-  - exact unit.
-  - exact empty.
-  - exact empty.
-  - exact ({Xl : FR_tree A A' RA ls ls' & {Xa : a ≈ a' & FR_tree A A' RA rs rs'}}).
-Defined.
+Fixpoint FR_tree {A A' : Type} (RA : A ≈ A') (t : tree A) (t' : tree A') : Type :=
+  match t, t' with
+    | nil_tree , nil_tree => unit
+    | nil_tree , cons_tree ls' a' rs' => empty
+    | cons_tree ls a rs , nil_tree => empty
+    | cons_tree ls a rs , cons_tree ls' a' rs' =>
+      {Xl : FR_tree RA ls ls' & {Xa : a ≈ a' & FR_tree RA rs rs'}}
+  end. 
 
 Instance Rel_tree {A A' : Type} (RA : A ≈ A') : Rel (tree A) (tree A') := FR_tree RA. 
   

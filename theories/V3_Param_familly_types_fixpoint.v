@@ -126,41 +126,44 @@ Notation "[| x |]" := (cons_vect x nil_vect).
 Infix "□" := cons_vect (at level 60, right associativity).
 
 
-Fixpoint FR_vect {A A':Type} (RA : A -> A' -> Type) 
+Fixpoint FR_vect {A A':Type} (RA : A ≈ A') 
          (n m : nat) (v : vect A n)
-  : forall  (v' : vect A' m) (Xn : FR_nat n m) , Type :=
+  : forall  (v' : vect A' m) (Xn : n ≈ m) , Type :=
   fun v' => match v , v' with
   | [| |] , [| |] => fun Xn => unit
   | [| |] , a' □ v' => fun Xn => empty
   | a □ v , [| |] => fun Xn => empty
   | a □ v , a' □ v' => fun Xn =>
-                         {_ : RA a a' & FR_vect RA _ _  v v' Xn}
+                         {_ : a ≈ a' & FR_vect RA _ _  v v' Xn}
   end.
 
-Definition liftnil {A n} : forall (e : FR_nat 0 n), vect A n :=
+Instance Rel_vect {A A':Type} (RA : A ≈ A') 
+         (n m : nat) (Xn : n ≈ m) : Rel (vect A n) (vect A' m) :=
+  fun v v' => FR_vect RA n m v v' Xn.
+
+Definition liftnil {A n} : forall (e : 0 ≈ n), vect A n :=
   match n with
   | 0 => fun _ => [| |]
   | S n => fun e => match e with end
   end.
 
-Definition code_vect_arg {A A' : Type} (RA : A -> A' -> Type)
-      (n:nat) (v:vect A n) : forall (m:nat) , FR_nat n m -> Type
+Definition code_vect_arg {A A' : Type} (RA : A ≈ A')
+      (n:nat) (v:vect A n) : forall (m:nat) , n ≈ m -> Type
   :=
     match v with
-      [| |] => fun m Xn => FR_vect RA 0 m [||] (liftnil Xn) Xn
+      [| |] => fun m Xn => [||] ≈ liftnil Xn
     | a □ v =>
       fun m =>
         match m with
         | 0 => fun _ => empty
         | S m => fun Xn =>
-                   {a':A' & {v':vect A' m &
-                                FR_vect RA (S _) (S m) (a □ v) (a' □ v') Xn}}
+                   {a':A' & {v':vect A' m & (a □ v) ≈ (a' □ v')}}
         end
     end.
 
-Definition Equiv_vect_arg {A A' : Type} (RA : A -> A' -> Type)
-      (n:nat) (m:nat) (Xn : FR_nat n m) (v:vect A n) :
-  Equiv ({v' : vect A' m & FR_vect RA n m v v' Xn})
+Definition Equiv_vect_arg {A A' : Type} (RA : A ≈ A')
+      (n:nat) (m:nat) (Xn : n ≈ m) (v:vect A n) :
+  Equiv ({v' : vect A' m & v ≈ v'})
         (code_vect_arg RA n v m Xn).  
 Proof.
   destruct v.
@@ -182,39 +185,73 @@ Proof.
       -- destruct m; try destruct Xn. intros [a' [v' r]]. reflexivity.
 Defined.
 
-Definition IsFun_vect {A A':Type} (RA : A -> A' -> Type) (WFA : IsFun(RA)) :
-  forall n m Xn, IsFun (fun v v' => FR_vect RA n m v v' Xn).
+Instance IsFun_vect {A A':Type} (RA : A ≈ A') :
+  forall n m Xn, IsFun (Rel_vect RA n m Xn).
 Proof.
-  intros n m Xn v. revert m Xn. induction v; intros m Xn;
-  eapply contr_equiv2; try (eapply Equiv_inverse; apply Equiv_vect_arg).
-  - destruct m; try destruct Xn. apply IsContr_unit.
-  - destruct m; try destruct Xn.
-    apply (IsContr_telescope2 (WFA a) (fun a' _ => IHv _ Xn)). 
+  intros n m Xn v. revert m Xn.
+  induction v; intros [ | m] Xn; isFun @Equiv_vect_arg;
+    try destruct Xn. 
 Defined.
 
-Fixpoint  vectR_sym_sym {A A'} (RA : A -> A' -> Type)
-  (n : nat) v :
-  forall m v' (Xn : FR_nat m n), FR_vect RA n m v v' (Nat_sym_sym _ _ Xn) ≃
-               sym (fun v v' => FR_vect (sym RA) m n v v' Xn) v v' :=
-  fun m v' =>
-    match v , v' with
-      [| |] , [| |] => fun _ => Equiv_id unit 
-    | [| |] , cons_vect a' l' => fun _ => Equiv_id empty
-    | cons_vect a l , [| |] => fun _ => Equiv_id empty
-    | cons_vect a l , cons_vect a' l' => fun Xn => EquivSigma (fun r => vectR_sym_sym RA _ l _ l' Xn)
+Definition liftnil_sym {A n} : forall (e : n ≈ 0), vect A n :=
+  match n with
+  | 0 => fun _ => [| |]
+  | S n => fun e => match e with end
+  end.
+
+Definition code_vect_arg_sym {A A' : Type} (RA : A ≈ A')
+      (m:nat) (v':vect A' m) : forall (n:nat) , n ≈ m -> Type
+  :=
+    match v' with
+      [| |] => fun n Xn => liftnil_sym Xn ≈ [||] 
+    | a' □ v' =>
+      fun n =>
+        match n with
+        | 0 => fun _ => empty
+        | S n => fun Xn =>
+                   {a:A & {v:vect A n & (a □ v) ≈ (a' □ v')}}
+        end
     end.
 
-Definition FP_vect (A A' : Type) (eA : A ⋈ A')
-  (n m : nat) (Xn : FR_nat n m) :
-  vect A n ⋈ vect A' m.
+Definition Equiv_vect_arg_sym {A A' : Type} (RA : A ≈ A')
+      (n:nat) (m:nat) (Xn : n ≈ m) (v':vect A' m) :
+  Equiv ({v : vect A n & v ≈ v'})
+        (code_vect_arg_sym RA m v' n Xn).  
 Proof.
-  unshelve econstructor.
-  - refine (fun v v' => FR_vect (_R eA) _ _ v v' Xn).
-  - split.
-    + apply IsFun_vect; typeclasses eauto.
-    + eapply IsFun_sym; [ eapply (fun v v' => vectR_sym_sym _ _ v _ v' _) |
-                          apply IsFun_vect ; typeclasses eauto ].
+  destruct v'.
+  * unshelve econstructor.
+    - intros [v' r]; destruct v'; cbn; try destruct Xn. 
+      exact r.
+    - unshelve eapply isequiv_adjointify.
+      -- intro r. destruct n; try destruct Xn. 
+         exists [||]. exact r. 
+      -- intros [v' r]; destruct v'; try destruct Xn; try reflexivity. 
+      -- intro r. destruct n; try destruct Xn; try reflexivity.
+  * unshelve econstructor.
+    - intros [v r ]; destruct v; try destruct Xn; cbn.
+      exists a0, v. cbn in * . exact r.
+    - unshelve eapply isequiv_adjointify.
+      -- destruct n; try destruct Xn. 
+         intros [a' [v r]]. exists (a' □ v). exact r.
+      -- intros [v r]; destruct v; try destruct Xn; try reflexivity.
+      -- destruct n; try destruct Xn. intros [a' [v r]]. reflexivity.
 Defined.
+
+Instance IsFun_vect_sym {A A':Type} (RA : A ≈ A') :
+  forall n m Xn, IsFun (sym (Rel_vect RA n m Xn)).
+Proof.
+  intros n m Xn v. revert n Xn.
+  induction v; intros [ | m] Xn; isFun @Equiv_vect_arg_sym;
+    try destruct Xn.
+Defined.
+
+Definition _FP_vect : @vect ≈ @vect.
+  FP. 
+Defined.
+
+Instance FP_vect (A A' : Type) (eA : A ⋈ A')
+  (n m : nat) (Xn : FR_nat n m) :
+  vect A n ⋈ vect A' m := _FP_vect _ _ eA _ _ Xn. 
 
 
 (* ########################################################### *)
