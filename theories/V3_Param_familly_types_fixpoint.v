@@ -126,10 +126,6 @@ Notation "[| x |]" := (cons_vect x nil_vect).
 Infix "□" := cons_vect (at level 60, right associativity).
 
 
-(* Inductive Rnat : forall (n m : nat), Type := *)
-(*   Rnat0 : Rnat 0 0 *)
-(* | RnatS : forall n m, Rnat n m -> Rnat (S m) (S n). *)
-
 Fixpoint FR_vect {A A':Type} (RA : A -> A' -> Type) 
          (n m : nat) (v : vect A n)
   : forall  (v' : vect A' m) (Xn : FR_nat n m) , Type :=

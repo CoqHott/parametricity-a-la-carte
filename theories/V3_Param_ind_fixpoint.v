@@ -109,8 +109,10 @@ Proof.
   apply IsContr_telescope4; auto.  
 Defined.
 
+Ltac erefine f  := first [ refine f | refine (f _) | refine (f _ _) | refine (f _ _ _) | refine (f _ _ _ _) | refine (f _ _ _ _ _) | refine (f _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _) ].
+
 Ltac isFun f :=
-  eapply contr_equiv2 ; try (apply Equiv_inverse; apply f);
+  eapply contr_equiv2 ; try (apply Equiv_inverse; erefine f);
   try first [ eapply IsContr_telescope5 |
               eapply IsContr_telescope4 |
               eapply IsContr_telescope3 |
@@ -215,29 +217,29 @@ Arguments inr {_ _} _.
 
 Notation "A ⊔ B" := (somme A B) (at level 30).
 
-Definition FR_somme {A A' B B':Type} (RA : Rel A A') (RB : Rel B B') 
+Definition FR_somme {A A' B B':Type} (RA : A ≈ A') (RB : B ≈ B') 
          (x:A ⊔ B) (y:A' ⊔ B') : Type :=
   match x , y with
-    inl a , inl a' => RA a a'
+    inl a , inl a' => a ≈ a'
   | inl a , inr b' => empty
   | inr b , inl a' => empty
-  | inr b , inr b' => RB b b'
+  | inr b , inr b' => b ≈ b'
   end.
 
-Instance Rel_Somme {A A' B B':Type} (RA : Rel A A')
-         (RB : Rel B B') : Rel (A ⊔ B) (A' ⊔ B') := FR_somme RA RB. 
+Instance Rel_Somme {A A' B B':Type} (RA : A ≈ A')
+         (RB : B ≈ B') : Rel (A ⊔ B) (A' ⊔ B') := FR_somme RA RB. 
 
-Definition code_somme_arg {A A' B B' : Type} (RA : A -> A' -> Type)
-                          (RB : B -> B' -> Type) (x : A ⊔ B) : 
+Definition code_somme_arg {A A' B B' : Type} (RA : A ≈ A')
+                          (RB : B ≈ B') (x : A ⊔ B) : 
   Type :=
   match x with
-    inl a => {a':A' & FR_somme RA RB (inl a) (inl a')}
-  | inr b => {b':B' & FR_somme RA RB (inr b) (inr b')}
+    inl a => {a':A' & inl a ≈ inl a'}
+  | inr b => {b':B' & inr b ≈ inr b'}
   end. 
 
-Definition Equiv_somme_arg {A A' B B' : Type} (RA : A -> A' -> Type)
-      (RB : B -> B' -> Type) (x : A ⊔ B) : 
-  Equiv ({y : A'⊔B' & FR_somme RA RB x y}) (code_somme_arg RA RB x). 
+Definition Equiv_somme_arg {A A' B B' : Type} (RA : A ≈ A')
+      (RB : B ≈ B') (x : A ⊔ B) : 
+  Equiv ({y : A' ⊔ B' & x ≈ y}) (code_somme_arg RA RB x). 
 Proof.
   destruct x as [a | b ]; unshelve econstructor ; cbn. 
   - exact (fun lr => match lr with
@@ -259,41 +261,38 @@ Proof.
 Defined.
 
 Instance IsFun_somme {A A' B B' : Type} 
-                       (RA : A -> A' -> Type)
-                       (RB : B -> B' -> Type)
-                       (WFA : IsFun RA)
-                       (WFB : IsFun RB) :
+                       (RA : A ≈ A')
+                       (RB : B ≈ B') :
                        IsFun (FR_somme RA RB).
 Proof.
   intro x; induction x; isFun @Equiv_somme_arg.
 Defined.
 
 Definition Somme_sym_sym {A A' B B': Type}
-      (RA : A -> A' -> Type) (RB : B -> B' -> Type) : 
-      forall {x y}, Equiv (FR_somme RA RB x y) 
-                          (sym (FR_somme (sym RA) (sym RB)) x y) :=
+      (RA : A ≈ A') (RB : B ≈ B') : 
+      forall {x y}, Equiv (FR_somme (FR_sym RA) (FR_sym RB) x y) 
+                          (sym (FR_somme RA RB) x y) :=
   fun x y => match x , y with
-    inl a , inl a' => Equiv_id (RA a a')
+    inl a , inl a' => Equiv_id (a ≈ a')
   | inl a , inr b' => Equiv_id empty
   | inr b , inl a' => Equiv_id empty
-  | inr b , inr b' => Equiv_id (RB b b')
+  | inr b , inr b' => Equiv_id (b ≈ b')
   end. 
 
 Instance IsFun_sym_somme {A A' B B' : Type} 
-                       (RA : A -> A' -> Type)
-                       (RB : B -> B' -> Type)
-                       (WFA : IsFun (sym RA))
-                       (WFB : IsFun (sym RB)) :
+                       (RA : A ≈ A')
+                       (RB : B ≈ B') :
                        IsFun (sym (FR_somme RA RB)).
 Proof.
   isFunSym @Somme_sym_sym.
 Defined.
 
 Definition FP_somme_ : somme ≈ somme.
-  compute. FP.
+  FP.
 Defined.
 
-Instance FP_somme {A A' B B' : Type} (eA : A ⋈ A') (eB : B ⋈ B') : (A ⊔ B) ⋈ (A' ⊔ B') := FP_somme_ A A' eA B B' eB.
+Instance FP_somme {A A' B B' : Type} (eA : A ≈ A') (eB : B ≈ B') : (A ⊔ B) ⋈ (A' ⊔ B')
+  := FP_somme_ A A' eA B B' eB.
 
 (* ###########################################################*)
 (* ###                   list A ⋈ list A'                 ###*)
@@ -311,24 +310,24 @@ Notation "[ x ; y ; .. ; z ]" := (cons x (cons y .. (cons z nil) ..)).
 
 Infix "::" := cons (at level 60, right associativity).
 
-Fixpoint FR_list {A A'} (RA : Rel A A') (l: list A) (l': list A') : Type :=
+Fixpoint FR_list {A A'} (RA : A ≈ A') (l: list A) (l': list A') : Type :=
   match l , l' with
     [] , [] => unit
   | [] , cons a' l' => empty
   | cons a l , [] => empty
-  | cons a l , cons a' l' => {Xa : RA a a' & FR_list RA l l'}
+  | cons a l , cons a' l' => {Xa : a ≈ a' & FR_list RA l l'}
   end.
 
-Instance Rel_list {A A'} (RA : Rel A A') : Rel (list A) (list A') := FR_list RA.
+Instance Rel_list {A A'} (RA : A ≈ A') : Rel (list A) (list A') := FR_list RA.
 
-Definition code_list_arg {A A' : Type} (RA : A -> A' -> Type) (l : list A) : Type :=
+Definition code_list_arg {A A' : Type} (RA : A ≈ A') (l : list A) : Type :=
   match l with
-    [] => FR_list RA [] []
-  | cons a l => {a':A' &{l':list A' & FR_list RA (a::l) (a'::l')}}
+    [] => [] ≈ []
+  | cons a l => {a':A' & {l':list A' & (a::l) ≈ (a'::l')}}
   end.
 
-Definition Equiv_list_arg {A A' : Type} (RA : A -> A' -> Type) (l: list A) :
-      Equiv ({y : list A' & FR_list RA l y}) (code_list_arg RA l).
+Definition Equiv_list_arg {A A' : Type} (RA : A ≈ A') (l: list A) :
+      Equiv ({y : list A' & l ≈ y}) (code_list_arg RA l).
 Proof.
   destruct l as [ | a l]; unfold code_list_arg; unshelve econstructor.  
   - exact (fun lr => match lr with
@@ -349,14 +348,13 @@ Proof.
     -- intros [a' [l' []]]; reflexivity.
 Defined.
 
-Instance IsFun_list (A A' : Type) (RA : A -> A' -> Type)
-           (WFA : IsFun RA) : IsFun (FR_list RA).
+Instance IsFun_list (A A' : Type) (RA : A ≈ A') : IsFun (FR_list RA).
 Proof.
   intro l; induction l; isFun @Equiv_list_arg.  
 Defined.
 
-Fixpoint listR_sym_sym A A' (R : A -> A' -> Type) (l : list A) : forall l',
-    FR_list R l l' ≃ sym (FR_list (sym R)) l l' :=
+Fixpoint listR_sym_sym (A A' : Type) (R : A ≈ A') (l : list A') : forall l',
+    FR_list (FR_sym R) l l' ≃ sym (FR_list R) l l' :=
   fun l' =>
     match l , l' with
       [] , [] => Equiv_id unit 
@@ -365,17 +363,17 @@ Fixpoint listR_sym_sym A A' (R : A -> A' -> Type) (l : list A) : forall l',
     | cons a l , cons a' l' => EquivSigma (fun r => listR_sym_sym _ _ _ l l')
     end.
 
-Instance IsFun_sym_list (A A' : Type) (RA : A -> A' -> Type)
-           (WFA : IsFun (sym RA)) : IsFun (sym (FR_list RA)).
+Instance IsFun_sym_list (A A' : Type) (RA : A ≈ A') : IsFun (sym (FR_list RA)).
 Proof.
   isFunSym @listR_sym_sym.
 Defined.
 
-Instance FP_list (A A' : Type) (eA : A ⋈ A'):
-  list A ⋈ list A'.
-Proof.
+Definition _FP_list : @list ≈ @list.
   FP.
 Defined.
+
+Instance FP_list (A A' : Type) (eA : A ≈ A') : list A ⋈ list A'
+  := _FP_list A A' eA. 
 
 (* ###########################################################*)
 (* ###                   tree A ⋈ tree A'                 ###*)
@@ -388,26 +386,26 @@ Inductive tree A : Type :=
 Arguments nil_tree {_}.
 Arguments cons_tree {_} _ _ _.
   
-Fixpoint FR_tree {A A' : Type} (RA : Rel A A') (t : tree A) (t' : tree A') : Type.
+Fixpoint FR_tree {A A' : Type} (RA : A ≈ A') (t : tree A) (t' : tree A') : Type.
 Proof.
   destruct t as [ | ls a rs], t' as [ | ls' a' rs' ].
   - exact unit.
   - exact empty.
   - exact empty.
-  - exact ({Xl : FR_tree A A' RA ls ls' & {Xa : RA a a' & FR_tree A A' RA rs rs'}}).
+  - exact ({Xl : FR_tree A A' RA ls ls' & {Xa : a ≈ a' & FR_tree A A' RA rs rs'}}).
 Defined.
 
-Instance Rel_tree {A A' : Type} (RA : Rel A A') : Rel (tree A) (tree A') := FR_tree RA. 
+Instance Rel_tree {A A' : Type} (RA : A ≈ A') : Rel (tree A) (tree A') := FR_tree RA. 
   
-Definition code_tree_arg {A A' : Type} (RA : A -> A' -> Type) (t : tree A) : Type.
+Definition code_tree_arg {A A' : Type} (RA : A ≈ A') (t : tree A) : Type.
 Proof.
   destruct t as [ | ls a rs].
-  - exact (FR_tree RA nil_tree nil_tree).
-  - exact ({ls' : tree A' & {a' :A' & {rs' : tree A' & FR_tree RA (cons_tree ls a rs) (cons_tree ls' a' rs') }}}).
+  - exact (nil_tree ≈ nil_tree).
+  - exact ({ls' : tree A' & {a' :A' & {rs' : tree A' & cons_tree ls a rs ≈ cons_tree ls' a' rs' }}}).
 Defined.
 
-Definition Equiv_tree_arg {A A' : Type} (RA : A -> A' -> Type) (t : tree A) : 
-      Equiv ({t' : tree A' & FR_tree RA t t'}) (code_tree_arg RA t).
+Definition Equiv_tree_arg {A A' : Type} (RA : A ≈ A') (t : tree A) : 
+      Equiv ({t' : tree A' & t ≈ t'}) (code_tree_arg RA t).
 Proof.
   destruct t as [ | ls a rs]; cbn.
   * unshelve econstructor.
@@ -428,14 +426,13 @@ Proof.
     -- intros [ls' [a' [rs' r]]]. destruct r. reflexivity.
 Defined.
 
-Instance IsFun_tree {A A' : Type} (RA : A -> A' -> Type)
-                      (WFA : IsFun RA): IsFun(FR_tree RA).
+Instance IsFun_tree {A A' : Type} (RA : A ≈ A') : IsFun (FR_tree RA).
 Proof.
   intro t; induction t; isFun @Equiv_tree_arg.  
 Defined.
 
-Fixpoint Tree_sym_sym A A' (RA : A -> A' -> Type) (t : tree A) :
-  forall t', FR_tree RA t t' ≃ sym (FR_tree (sym RA)) t t' :=
+Fixpoint Tree_sym_sym A A' (RA : A ≈ A') (t : tree A') :
+  forall t', FR_tree (FR_sym RA) t t' ≃ sym (FR_tree RA) t t' :=
   fun t' =>
     match t , t' with
       nil_tree , nil_tree => Equiv_id unit 
@@ -443,20 +440,22 @@ Fixpoint Tree_sym_sym A A' (RA : A -> A' -> Type) (t : tree A) :
     | cons_tree ls a rs , nil_tree => Equiv_id empty
     | cons_tree ls a rs , cons_tree ls' a' rs' =>
       EquivSigmaNoDep (Tree_sym_sym A A' RA ls ls')
-         (EquivSigmaNoDep (Equiv_id (RA a a'))
+         (EquivSigmaNoDep (Equiv_id (a ≈ a'))
                         (Tree_sym_sym A A' RA rs rs')) 
     end.
 
-Instance IsFun_sym_tree {A A' : Type} (RA : A -> A' -> Type)
-         (WFA : IsFun (sym RA)): IsFun (sym (FR_tree RA)).
+Instance IsFun_sym_tree {A A' : Type} (RA : A ≈ A') : IsFun (sym (FR_tree RA)).
 Proof.
-  isFunSym  @Tree_sym_sym.
+  isFunSym @Tree_sym_sym.
 Defined. 
 
-Instance FP_tree {A A':Type} (eA : A ⋈ A') : tree A ⋈ tree A'.
+Definition _FP_tree : @tree ≈ @tree.
 Proof.
   FP.
 Defined.
+
+Instance FP_tree {A A':Type} (eA : A ≈ A') : tree A ⋈ tree A' :=
+  _FP_tree _ _ eA.
 
 (* ###########################################################*)
 (* ###                 Σ(a:A) B ⋈ Σ(a':A') B'             ###*)
@@ -474,40 +473,43 @@ Notation " ( x ; p ) " := (existT _ x p).
 Definition EqSigma {A : Type} {P : A -> Type} (w w' : {a:A & P a}) : Equiv (w = w') {p: w .1 = w' .1 & p # (w .2) = w' .2}.
 Proof. *)
 
+#[export] Hint Extern 0 (Rel (?B ?a) (?B' ?a')) =>
+  match goal with | H : ?R a a' , H' : _ |- _ => specialize (H' _ _ H) end
+: typeclass_instances.
+
 Fixpoint FR_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
-      (RA : A ⋈ A')
+      (RA : A ≈ A')
       (RB : B ≈ B')
       (x : {a: A & B a}) (y:{a':A' & B' a'}) : Type :=
   match x , y with 
-    (a ; b) , (a' ; b') => {Xa: _R RA a a' & _R (RB a a' Xa) b b'}
+    (a ; b) , (a' ; b') => {_ : a ≈ a' & b ≈ b' }
   end.
 
 Instance Rel_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
-      (RA : A ⋈ A')
+      (RA : A ≈ A')
       (RB : B ≈ B') : Rel {a: A & B a} {a':A' & B' a'} := FR_sigma RA RB.
 
 #[export] Hint Extern 0 (Rel (sigT _) (sigT _)) =>
  refine (Rel_sigma _ _) ; intros : typeclass_instances.
 
 Definition code_sigma_arg {A A':Type} {B : A -> Type} {B' : A' -> Type}
-      (RA : A ⋈ A')
+      (RA : A ≈ A')
       (RB : B ≈ B')
       (x: {a:A & B a}) : Type :=
   match x with
-    (a ; b) => {a' : A' & {b' : B' a' & FR_sigma RA RB (a;b) (a';b')}}
+    (a ; b) => { a' : A' & { b' : B' a' & (a;b) ≈ (a';b')} }
   end.
 
 Definition Equiv_sigma_arg {A A':Type} {B : A -> Type} {B' : A' -> Type}
-      (RA : A ⋈ A')
+      (RA : A ≈ A')
       (RB : B ≈ B')
       (x: {a:A & B a}) : 
-      Equiv ({y:{a':A' & B' a'} & FR_sigma RA RB x y})
-            (code_sigma_arg RA RB x).
+      Equiv ({y:{a':A' & B' a'} & x ≈ y}) (code_sigma_arg RA RB x).
 Proof.
   destruct x as [a b]; unfold code_sigma_arg.
   unshelve econstructor.
   - intros [y r]. destruct y as [a' b']; try destruct r.
-    exists a', b', x. exact _r.
+    exists a', b', x. exact r.
   - unshelve eapply isequiv_adjointify.
     -- intros [a' [b' r]]. exists (a';b'). exact r.
     -- intros [y r]; destruct y; try destruct r; try reflexivity.
@@ -515,7 +517,7 @@ Proof.
 Defined.
 
 Instance IsFun_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
-      (RA : A ⋈ A')
+      (RA : A ≈ A')
       (RB : B ≈ B') :
       IsFun (Rel_sigma RA RB).
 Proof.
@@ -527,24 +529,37 @@ Defined.
 #[export] Hint Extern 0 (IsFun (Rel_sigma _ _))  =>
 refine (IsFun_sigma _ _) : typeclass_instances.
 
-Definition Sigma_sym_sym {A A'} {P : A -> Type} {P' : A' -> Type} 
-           (RA : A ⋈ A')
-           (RB : P ≈ P') 
-           (w: {a:A' & P' a}):
-  forall z, (FR_sigma (FR_sym RA) (fun x y X => FR_sym (RB y x X)) w z)
-              ≃ sym (FR_sigma RA RB) w z :=
-  fun z =>
-    match z , w with
-      (a ; b) , (a' ; b') => EquivSigmaGen (Equiv_id _)
-                                           (fun X => Equiv_id _)
-    end.
+Definition code_sigma_arg_sym {A A':Type} {B : A -> Type} {B' : A' -> Type}
+      (RA : A ≈ A')
+      (RB : B ≈ B')
+      (x: {a':A' & B' a'}) : Type :=
+  match x with
+    (a' ; b') => {a:A & {b : B a & (a;b) ≈ (a';b')}}
+  end.
+
+Definition Equiv_sigma_arg_sym {A A':Type} {B : A -> Type} {B' : A' -> Type}
+      (RA : A ≈ A')
+      (RB : B ≈ B')
+      (x: {a':A' & B' a'}) : 
+      Equiv ({y:{a:A & B a} & y ≈ x})
+            (code_sigma_arg_sym RA RB x).
+Proof.
+  destruct x as [a b]; unfold code_sigma_arg.
+  unshelve econstructor.
+  - intros [y r]. destruct y as [a' b']; try destruct r.
+    exists a', b', x. exact r.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [a' [b' r]]. exists (a';b'). exact r.
+    -- intros [y r]; destruct y; try destruct r; try reflexivity.
+    -- intros [a' [b' r]]; try destruct r; try reflexivity.
+Defined.
 
 Instance IsFun_sym_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
-      (RA : A ⋈ A') 
+      (RA : A ≈ A') 
       (RB : B ≈ B') :
       IsFun (sym (Rel_sigma RA RB)).
 Proof.
-  isFunSym @Sigma_sym_sym.
+  intro x; induction x; isFun @Equiv_sigma_arg_sym.
 Defined. 
 
 (* Instance is not sufficient here *)
@@ -558,6 +573,5 @@ Proof.
 Defined.
 
 Instance FP_sigma (A A' : Type) (B : A -> Type) (B' : A' -> Type) 
-    (eA : A ⋈ A')
-    (eB : forall (a:A) (a':A') (Xa: (_R eA) a a'), B a ⋈ B' a') :
+    (eA : A ≈ A') (eB : B ≈ B') :
     {a:A & B a} ⋈ {a':A' & B' a'} := _FP_sigma A A' eA B B' eB.
