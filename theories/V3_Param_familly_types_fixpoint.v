@@ -269,53 +269,52 @@ Notation "x = y" := (x = y :>_) : type_scope.
 Arguments eq_refl {_ _}. *)
 
 (* Version explicite avec des transports *)
-Definition FR_eq {A A' : Type } (RA : A -> A' -> Type)
-          (x:A) (x':A') (Xx : RA x x')
-          (y:A) (y':A') (Xy: RA y y') (p : x = y) (q : x' = y') : Type := 
-    transport_eq (fun x' => RA x x') q Xx = transport_eq (fun x => RA x y') (inverse p) Xy.
+Instance Rel_eq {A A' : Type } (RA : A ≈ A')
+          (x:A) (x':A') (Xx : x ≈ x')
+          (y:A) (y':A') (Xy: y ≈ y') : Rel (x = y) (x' = y') := fun p q =>
+    transport_eq (fun x' => x ≈ x') q Xx = transport_eq (fun x => x ≈ y') (inverse p) Xy.
 
 (* code_eq_arg était inutile, juste une simplification 
    avec refl ce qui désormais automatique *)
 
-Instance IsFun_eq {A A' : Type } (RA : A -> A' -> Type) (WFA : IsFun(RA))
-          (x:A) (x':A') (Xx : RA x x')
-          (y:A) (y':A') (Xy: RA y y') :
-          IsFun (FR_eq RA x x' Xx y y' Xy).
+Instance IsFun_eq {A A' : Type } (RA : A ≈ A')
+          (x:A) (x':A') (Xx : x ≈ x')
+          (y:A) (y':A') (Xy: y ≈ y') :
+          IsFun (Rel_eq RA x x' Xx y y' Xy).
 Proof.
-  intro p. destruct p; unfold FR_eq; cbn.
+  intro p. destruct p.
   apply (contr_equiv2 ((x'; Xx) = (y'; Xy))). 
-  apply (@EqSigma A' (RA x) (x';Xx) (y';Xy)).
-  apply contr_paths_contr. exact (WFA x).
+  apply (@EqSigma A' (_R RA x) (x';Xx) (y';Xy)).
+  apply contr_paths_contr. exact (isWFun (_REquiv RA) x).
 Defined.
 
 #[export] Hint Extern 0 (IsContr { _ : _ = _ & _})  =>
   apply IsFun_eq: typeclass_instances.
 
-Instance IsFun_eq_sym {A A' : Type } (RA : A -> A' -> Type) (WFA : IsFun(sym RA))
-          (x:A) (x':A') (Xx : RA x x')
-          (y:A) (y':A') (Xy: RA y y') :
-          IsFun (sym (FR_eq RA x x' Xx y y' Xy)).
+Instance IsFun_eq_sym {A A' : Type } (RA : A ≈ A')
+          (x:A) (x':A') (Xx : x ≈ x')
+          (y:A) (y':A') (Xy: y ≈ y') :
+          IsFun (sym (Rel_eq RA x x' Xx y y' Xy)).
 Proof.
-  intro p. destruct p; unfold FR_eq; cbn.
-  apply (contr_equiv2 ((@existT _ (fun a => RA a x') x Xx) = (y; Xy))).
+  intro p. destruct p.
+  apply (contr_equiv2 ((@existT _ (fun a => a ≈ x') x Xx) = (y; Xy))).
   eapply equiv_compose. 
-  apply (@EqSigma A (fun z => RA z x') (x;Xx) (y;Xy)).
+  apply (@EqSigma A (fun z => z ≈ x') (x;Xx) (y;Xy)).
   apply EquivSigma. cbn. intro e; destruct e. apply Equiv_id. 
-  apply contr_paths_contr. exact (WFA x').
+  apply contr_paths_contr. exact (isWFunSym (_REquiv RA) x').
 Defined.
 
 #[export] Hint Extern 0 (IsContr { _ : _ = _ & _})  =>
   apply IsFun_eq_sym: typeclass_instances.
 
-Definition FP_eq (A A' : Type) (eA : A ⋈ A') 
+Definition _FP_eq : @eq ≈ @eq. 
+  FP.
+Defined.
+
+Instance FP_eq (A A' : Type) (eA : A ⋈ A') 
     (x:A) (x':A') (Xx : _R eA x x')
     (y:A) (y':A') (Xy : _R eA y y') :
-    eq A x y ⋈ eq A' x' y'.
-Proof.
-  unshelve econstructor.
-  - exact (FR_eq (_R eA) x x' Xx y y' Xy).
-  - split; typeclasses eauto.
-Defined.
+    eq A x y ⋈ eq A' x' y' := _FP_eq _ _ eA _ _ Xx _ _ Xy. 
 
 (*** Vectors with fording à la McBride ***)
 
