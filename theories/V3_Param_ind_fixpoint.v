@@ -134,7 +134,7 @@ Ltac isFunSym fsym :=
 #[export] Hint Unfold rel : typeclass_instances.
 
 #[export] Hint Extern 0 (Rel _ _)  =>
- match goal with | H : _ ≈ _ |- _ => compute in H end: typeclass_instances.
+ match goal with | H : _ ≈ _ |- _ => progress (compute in H) end: typeclass_instances.
 
 (* ###########################################################*)
 (* ###                     nat ⋈ nat                       ###*)
@@ -148,7 +148,7 @@ Fixpoint FR_nat (n m : nat) : Type :=
     | _ , _ => empty
   end.
 
-Instance Rel_Nat : Rel nat nat := FR_nat. 
+Instance Rel_nat : Rel nat nat := FR_nat. 
 
 Definition code_nat_arg (n : nat) : 
   Type :=
@@ -158,7 +158,7 @@ Definition code_nat_arg (n : nat) :
   end. 
 
 Definition Equiv_nat_arg (n : nat) : 
-  Equiv ({m : nat & FR_nat n m}) (code_nat_arg n). 
+  Equiv ({m : nat & n ≈ m}) (code_nat_arg n). 
 Proof.
   destruct n as [ | n ]; unshelve econstructor ; cbn. 
   - exact (fun lr => match lr with
@@ -185,7 +185,7 @@ Proof.
 Defined.
 
 Fixpoint Nat_sym_sym x : 
-      forall y, Equiv (FR_nat x y) (sym FR_nat x y) :=
+      forall y, Equiv (x ≈ y) (y ≈ x) :=
   fun y => match x , y with
     0 , 0 => Equiv_id unit
   | 0 , S _ => Equiv_id empty
@@ -268,23 +268,43 @@ Proof.
   intro x; induction x; isFun @Equiv_somme_arg.
 Defined.
 
-Definition Somme_sym_sym {A A' B B': Type}
-      (RA : A ≈ A') (RB : B ≈ B') : 
-      forall {x y}, Equiv (FR_somme (FR_sym RA) (FR_sym RB) x y) 
-                          (sym (FR_somme RA RB) x y) :=
-  fun x y => match x , y with
-    inl a , inl a' => Equiv_id (a ≈ a')
-  | inl a , inr b' => Equiv_id empty
-  | inr b , inl a' => Equiv_id empty
-  | inr b , inr b' => Equiv_id (b ≈ b')
+Definition code_somme_arg_sym {A A' B B' : Type} (RA : A ≈ A')
+                          (RB : B ≈ B') (x : A' ⊔ B') : 
+  Type :=
+  match x with
+    inl a' => {a:A & inl a ≈ inl a'}
+  | inr b' => {b:B & inr b ≈ inr b'}
   end. 
+
+Definition Equiv_somme_arg_sym {A A' B B' : Type} (RA : A ≈ A')
+      (RB : B ≈ B') (x : A' ⊔ B') : 
+  Equiv ({y : A ⊔ B & y ≈ x}) (code_somme_arg_sym RA RB x). 
+Proof.
+  destruct x as [a | b ]; unshelve econstructor ; cbn. 
+  - exact (fun lr => match lr with
+                         ( inl a' ; r ) => (a' ; r)
+                       | ( inr b' ; r ) => match r with end  
+                       end).
+  - exact (fun lr => match lr with
+                         ( inl a' ; r ) => match r with end 
+                       | ( inr b' ; r ) => (b' ; r)
+                       end).
+  - unshelve eapply isequiv_adjointify.
+    -- intros [a' r]. exact (inl a' ; r).
+    -- intros [[a' | b'] r]; [ reflexivity | destruct r ].
+    -- intros [a' r]. reflexivity.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [b' r]. exact (inr b' ; r ).
+    -- intros [[a' | b'] r]; [ destruct r | reflexivity ].
+    -- intros [b' r]; try reflexivity.
+Defined.
 
 Instance IsFun_sym_somme {A A' B B' : Type} 
                        (RA : A ≈ A')
                        (RB : B ≈ B') :
                        IsFun (sym (FR_somme RA RB)).
 Proof.
-  isFunSym @Somme_sym_sym.
+  intro x; induction x; isFun @Equiv_somme_arg_sym.
 Defined.
 
 Definition FP_somme_ : somme ≈ somme.
@@ -323,7 +343,7 @@ Instance Rel_list {A A'} (RA : A ≈ A') : Rel (list A) (list A') := FR_list RA.
 Definition code_list_arg {A A' : Type} (RA : A ≈ A') (l : list A) : Type :=
   match l with
     [] => [] ≈ []
-  | cons a l => {a':A' & {l':list A' & (a::l) ≈ (a'::l')}}
+  | cons a l => {a':_ & {l':_ & (a::l) ≈ (a'::l')}}
   end.
 
 Definition Equiv_list_arg {A A' : Type} (RA : A ≈ A') (l: list A) :
@@ -353,19 +373,37 @@ Proof.
   intro l; induction l; isFun @Equiv_list_arg.  
 Defined.
 
-Fixpoint listR_sym_sym (A A' : Type) (R : A ≈ A') (l : list A') : forall l',
-    FR_list (FR_sym R) l l' ≃ sym (FR_list R) l l' :=
-  fun l' =>
-    match l , l' with
-      [] , [] => Equiv_id unit 
-    | [] , cons a' l' => Equiv_id empty
-    | cons a l , [] => Equiv_id empty
-    | cons a l , cons a' l' => EquivSigma (fun r => listR_sym_sym _ _ _ l l')
-    end.
+Definition code_list_arg_sym {A A' : Type} (RA : A ≈ A') (l' : list A') : Type :=
+  match l' with
+    [] => [] ≈ []
+  | cons a' l' => {a:_ & {l: _ & (a::l) ≈ (a'::l')}}
+  end.
+
+Definition Equiv_list_arg_sym {A A' : Type} (RA : A ≈ A') (l': list A') :
+      Equiv ({l : list A & l ≈ l'}) (code_list_arg_sym RA l').
+Proof.
+  destruct l' as [ | a l]; unfold code_list_arg; unshelve econstructor.  
+  - exact (fun lr => match lr with
+                         ([] ; r) => tt
+                       | (a' :: l' ; r) => match r with end
+                       end).
+  - exact (fun lr => match lr with
+                         ([] ; r) => match r with end
+                       | (a' :: l' ; r) => (a' ; ( l' ; r)) 
+                       end).
+  - unshelve eapply isequiv_adjointify.
+    -- intro r. exists []. exact r.
+    -- intros [[| a' l'] []] ; reflexivity.
+    -- intro r; destruct r. reflexivity. 
+  - unshelve eapply isequiv_adjointify.
+    -- intros [a' [l' r]]. exact ( a'::l' ; r).
+    -- intros [[|a' l'] []]; reflexivity.
+    -- intros [a' [l' []]]; reflexivity.
+Defined.
 
 Instance IsFun_sym_list (A A' : Type) (RA : A ≈ A') : IsFun (sym (FR_list RA)).
 Proof.
-  isFunSym @listR_sym_sym.
+  intro l; induction l; isFun @Equiv_list_arg_sym.  
 Defined.
 
 Definition _FP_list : @list ≈ @list.
@@ -397,12 +435,12 @@ Defined.
 
 Instance Rel_tree {A A' : Type} (RA : A ≈ A') : Rel (tree A) (tree A') := FR_tree RA. 
   
-Definition code_tree_arg {A A' : Type} (RA : A ≈ A') (t : tree A) : Type.
-Proof.
-  destruct t as [ | ls a rs].
-  - exact (nil_tree ≈ nil_tree).
-  - exact ({ls' : tree A' & {a' :A' & {rs' : tree A' & cons_tree ls a rs ≈ cons_tree ls' a' rs' }}}).
-Defined.
+Definition code_tree_arg {A A' : Type} (RA : A ≈ A') (t : tree A) : Type :=
+  match t with
+  | nil_tree => nil_tree ≈ nil_tree
+  | cons_tree ls a rs =>
+    {ls' : _ & {a':_ & {rs' : _ & cons_tree ls a rs ≈ cons_tree ls' a' rs' }}}
+  end.
 
 Definition Equiv_tree_arg {A A' : Type} (RA : A ≈ A') (t : tree A) : 
       Equiv ({t' : tree A' & t ≈ t'}) (code_tree_arg RA t).
@@ -431,22 +469,38 @@ Proof.
   intro t; induction t; isFun @Equiv_tree_arg.  
 Defined.
 
-Fixpoint Tree_sym_sym A A' (RA : A ≈ A') (t : tree A') :
-  forall t', FR_tree (FR_sym RA) t t' ≃ sym (FR_tree RA) t t' :=
-  fun t' =>
-    match t , t' with
-      nil_tree , nil_tree => Equiv_id unit 
-    | nil_tree , cons_tree ls' a' rs' => Equiv_id empty
-    | cons_tree ls a rs , nil_tree => Equiv_id empty
-    | cons_tree ls a rs , cons_tree ls' a' rs' =>
-      EquivSigmaNoDep (Tree_sym_sym A A' RA ls ls')
-         (EquivSigmaNoDep (Equiv_id (a ≈ a'))
-                        (Tree_sym_sym A A' RA rs rs')) 
-    end.
+Definition code_tree_arg_sym {A A' : Type} (RA : A ≈ A') (t : tree A') : Type :=
+  match t with
+  | nil_tree => nil_tree ≈ nil_tree
+  | cons_tree ls' a' rs' =>
+    {ls : _ & {a:_ & {rs : _ & cons_tree ls a rs ≈ cons_tree ls' a' rs' }}}
+  end.
+
+Definition Equiv_tree_arg_sym {A A' : Type} (RA : A ≈ A') (t' : tree A') : 
+      Equiv ({t : tree A & t ≈ t'}) (code_tree_arg_sym RA t').
+Proof.
+  destruct t' as [ | ls a rs]; cbn.
+  * unshelve econstructor.
+    - intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r.
+      exact tt.
+    - unshelve eapply isequiv_adjointify.
+      -- intro r. exists nil_tree. exact r.
+      -- intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r. 
+         reflexivity.
+      -- intro r; destruct r. reflexivity.
+  * unshelve econstructor.
+  - intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r.
+    exists ls', a', rs', x. exact s.
+  - unshelve eapply isequiv_adjointify.
+    -- intros [ls' [a' [rs' r]]]. exists (cons_tree ls' a' rs'). exact r.
+    -- intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r.
+       reflexivity.
+    -- intros [ls' [a' [rs' r]]]. destruct r. reflexivity.
+Defined.
 
 Instance IsFun_sym_tree {A A' : Type} (RA : A ≈ A') : IsFun (sym (FR_tree RA)).
 Proof.
-  isFunSym @Tree_sym_sym.
+  intro t; induction t; isFun @Equiv_tree_arg_sym.  
 Defined. 
 
 Definition _FP_tree : @tree ≈ @tree.
