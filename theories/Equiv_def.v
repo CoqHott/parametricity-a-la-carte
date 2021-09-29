@@ -159,7 +159,7 @@ move=> [WF WFsym]. apply: (isequiv_adjointify _ (funR WFsym)) => [x|y] /=.
 exact: (((WF (funR WFsym y)).2 (y;(center WFsym) y))..1).
 Defined.
  
-Definition Fun_inv (A B : Type) : (FR_Type A B) -> (Equiv A B).
+Definition Fun_inv (A B : Type) : (A ⋈ B) -> (A ≃ B).
 Proof.
   move=>[R FAB].
   exact (BuildEquiv A B (funR (isWFun FAB)) (IsWeakEquiv_IsEquiv R FAB)).
@@ -238,7 +238,7 @@ Proof.
     * apply IsFR_TypeHProp.
 Defined.
    
-Definition Equiv_Equiv_FR_Type {A B : Type} : Equiv (Equiv A B) (FR_Type A B).
+Definition Equiv_Equiv_FR_Type {A B : Type} : Equiv (A ≃ B) (A ⋈ B).
 Proof.
   exact (BuildEquiv _ _ (Fun A B) (IsEquiv_Equiv_Equiv_FR_Type)).
 Defined.

@@ -223,8 +223,29 @@ Proof.
   FP. 
 Defined.
 
+Definition FR_0 : 0 ≈ 0 := tt. 
 
-(* ###########################################################*)
+#[export] Hint Extern 0 (0 ≈ 0) => exact FR_0 : typeclass_instances.
+
+Definition FR_S : S ≈ S := fun n m e => e.
+
+#[export] Hint Extern 0 (S _ ≈ S _) => refine (FR_S _ _ _) : typeclass_instances.
+
+#[export] Hint Extern 0 (?a _ ⋈ ?a' _) => match goal with | H : _ |- _ => unshelve eapply H end : typeclass_instances.
+
+Definition FR_nat_rect : @nat_rect ≈ @nat_rect. 
+Proof.
+  intros P Q HPQ P0 Q0 H0 PS QS HS. 
+  unfold rel, FR_Forall. refine (nat_rect _ _ _).
+  - refine (nat_rect _ _ _).
+    * intros []. exact H0.
+    * intros n Ind []. 
+  - intros n Ind. refine (nat_rect _ _ _).
+    * intros [].
+    * intros m _ Hn. exact (HS n m Hn _ _ (Ind m Hn)).
+Defined. 
+  
+  (* ###########################################################*)
 (* ###                   A ⊔ B ⋈ A' ⊔ B'                  ###*)
 (* ###########################################################*)
 
@@ -241,17 +262,15 @@ Definition FR_somme {A A' B B':Type} (RA : A ≈ A') (RB : B ≈ B')
          (x:A ⊔ B) (y:A' ⊔ B') : Type :=
   match x , y with
     inl a , inl a' => a ≈ a'
-  | inl a , inr b' => empty
-  | inr b , inl a' => empty
   | inr b , inr b' => b ≈ b'
+  | _ , _ => empty
   end.
 
 Instance Rel_Somme {A A' B B':Type} (RA : A ≈ A')
          (RB : B ≈ B') : Rel (A ⊔ B) (A' ⊔ B') := FR_somme RA RB. 
 
 Definition code_somme_arg {A A' B B' : Type} (RA : A ≈ A')
-                          (RB : B ≈ B') (x : A ⊔ B) : 
-  Type :=
+                          (RB : B ≈ B') (x : A ⊔ B) : Type :=
   match x with
     inl a => {a':A' & inl a ≈ inl a'}
   | inr b => {b':B' & inr b ≈ inr b'}
@@ -289,8 +308,7 @@ Proof.
 Defined.
 
 Definition code_somme_arg_sym {A A' B B' : Type} (RA : A ≈ A')
-                          (RB : B ≈ B') (x : A' ⊔ B') : 
-  Type :=
+                          (RB : B ≈ B') (x : A' ⊔ B') : Type :=
   match x with
     inl a' => {a:A & inl a ≈ inl a'}
   | inr b' => {b:B & inr b ≈ inr b'}
@@ -334,6 +352,31 @@ Defined.
 Instance FP_somme {A A' B B' : Type} (eA : A ≈ A') (eB : B ≈ B') : (A ⊔ B) ⋈ (A' ⊔ B')
   := FP_somme_ A A' eA B B' eB.
 
+(* Definition foo : (forall A B, A -> A ⊔ B) ⋈(forall A B, A -> A ⊔ B). *)
+(*   eapply FP_forall. intros. cbn in H. *)
+(*   eapply FP_forall. intros. cbn in H. *)
+(*   unshelve eapply FP_forall. typeclasses eauto.  *)
+  
+
+Definition FP_inl : @inl ≈ @inl := fun A A' eA B B' eB a a' Ra => Ra. 
+
+#[export] Hint Extern 0 (inl _ ≈ inl _) => refine (FP_inl _ _ _ _ _ _ _ _ _) : typeclass_instances.
+
+Definition FP_inr : @inr ≈ @inr := fun A A' eA B B' eB b b' Rb => Rb. 
+
+#[export] Hint Extern 0 (inr _ ≈ inr _) => refine (FP_inr _ _ _ _ _ _ _ _ _) : typeclass_instances.
+
+Definition FP_somme_rect : @somme_rect ≈ @somme_rect.
+intros A A' HA B B' HB P Q HPQ HinlP HinlQ Hinl HinrP HinrQ Hinr. 
+  unfold rel, FR_Forall. refine (somme_rect _ _ _ _ _).
+  - intro a. refine (somme_rect _ _ _ _ _).
+    * intros a' ea. exact (Hinl _ _ ea).
+    * intros _ []. 
+  - intros b. refine (somme_rect _ _ _ _ _).
+    * intros _ [].
+    * intros b' eb. exact (Hinr _ _ eb).
+Defined. 
+
 (* ###########################################################*)
 (* ###                   list A ⋈ list A'                 ###*)
 (* ###########################################################*)
@@ -353,9 +396,8 @@ Infix "::" := cons (at level 60, right associativity).
 Fixpoint FR_list {A A'} (RA : A ≈ A') (l: list A) (l': list A') : Type :=
   match l , l' with
     [] , [] => unit
-  | [] , cons a' l' => empty
-  | cons a l , [] => empty
   | cons a l , cons a' l' => {Xa : a ≈ a' & FR_list RA l l'}
+  | _ , _ => empty
   end.
 
 Instance Rel_list {A A'} (RA : A ≈ A') : Rel (list A) (list A') := FR_list RA.
@@ -433,6 +475,25 @@ Defined.
 Instance FP_list (A A' : Type) (eA : A ≈ A') : list A ⋈ list A'
   := _FP_list A A' eA. 
 
+Definition FP_nil : @nil ≈ @nil := fun A A' eA => tt.
+
+#[export] Hint Extern 0 (nil ≈ nil) => refine (FP_nil _ _ _) : typeclass_instances.
+
+Definition FP_cons : @cons ≈ @cons := fun A A' eA a a' ea l l' el => (ea ; el). 
+
+#[export] Hint Extern 0 (cons _ _ ≈ cons _ _) => refine (FP_cons _ _ _ _ _ _ _ _ _) : typeclass_instances.
+
+Definition FP_list_rect : @list_rect ≈ @list_rect.
+intros A A' HA P Q HPQ HnilP HnilQ Hnil HconsP HconsQ Hcons. 
+  unfold rel, FR_Forall. refine (list_rect _ _ _ _).
+  - refine (list_rect _ _ _ _).
+    * intros []. exact Hnil. 
+    * intros _ _ _ []. 
+  - intros a l IHl. refine (list_rect _ _ _ _).
+    * intros [].
+    * intros a' l' _ [ea el]. cbn. refine (Hcons _ _ ea _ _ el _ _ (IHl _ el)).
+Defined. 
+
 (* ###########################################################*)
 (* ###                   tree A ⋈ tree A'                 ###*)
 (* ###########################################################*)
@@ -447,10 +508,9 @@ Arguments cons_tree {_} _ _ _.
 Fixpoint FR_tree {A A' : Type} (RA : A ≈ A') (t : tree A) (t' : tree A') : Type :=
   match t, t' with
     | nil_tree , nil_tree => unit
-    | nil_tree , cons_tree ls' a' rs' => empty
-    | cons_tree ls a rs , nil_tree => empty
     | cons_tree ls a rs , cons_tree ls' a' rs' =>
       {Xl : FR_tree RA ls ls' & {Xa : a ≈ a' & FR_tree RA rs rs'}}
+    | _ , _ => empty
   end. 
 
 Instance Rel_tree {A A' : Type} (RA : A ≈ A') : Rel (tree A) (tree A') := FR_tree RA. 
@@ -649,3 +709,17 @@ Defined.
 Instance FP_sigma (A A' : Type) (B : A -> Type) (B' : A' -> Type) 
     (eA : A ≈ A') (eB : B ≈ B') :
     {a:A & B a} ⋈ {a':A' & B' a'} := _FP_sigma A A' eA B B' eB.
+
+Definition FP_existT : @existT ≈ @existT := fun A A' eA B B' eB a a' ea b b' eb => (ea ; eb).
+
+#[export] Hint Extern 0 ((_ ; _) ≈ (_ ; _ )) => refine (FP_existT _ _ _ _ _ _ _ _ _ _ _ _) : typeclass_instances.
+
+Definition FP_sigT_rect : @sigT_rect ≈ @sigT_rect.
+  intros A A' eA B B' eB P Q ePQ HexP HexQ Hex.
+  refine (sigT_rect _ _ _ _); intros a b.
+  refine (sigT_rect _ _ _ _); intros a' b' [ea eb].
+  exact (Hex _ _ ea _ _ eb).
+Defined. 
+  
+
+  

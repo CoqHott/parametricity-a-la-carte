@@ -25,7 +25,9 @@ Instance FR_Type_def@{i j} : Rel@{j j j} Type@{i} Type@{i} :=
 Hint Extern 0 (?x ≈ ?y) => eassumption : typeclass_instances.
 
 Hint Extern 0 (_R _ _ _) => eassumption : typeclass_instances.
-  
+
+Hint Extern 0 (?x ⋈ ?y) => eassumption : typeclass_instances.
+
 Instance FP_Type : Type ⋈ Type.
 Proof.
   econstructor. unfold rel. unshelve econstructor => [A|B].
@@ -86,7 +88,7 @@ Proof.
   unshelve econstructor; compute => //=.
 Defined. 
 
-Instance FP_forall (A A' : Type) (eA : A ⋈ A')
+Definition FP_forall (A A' : Type) (eA : A ⋈ A')
            (B : A -> Type) (B' : A' -> Type) 
            (eB : forall (a:A) (a':A') (H: (_R eA) a a'), B a ⋈ B' a') :
   (forall x : A,
@@ -100,3 +102,6 @@ Proof.
       - intros a' a H. destruct (eB a a' H) as [RB FB].
         apply IsWeakEquiv_sym. exact FB.
 Defined.
+
+#[export] Hint Extern 0 ((forall x : _ , _) ⋈ (forall y : _ , _)) =>
+unshelve refine (FP_forall _ _ _ _ _ _) ; intros : typeclass_instances.
