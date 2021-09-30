@@ -114,7 +114,7 @@ Defined.
 
 (*** Vect A n ⋈ Vect A' n ***)
 Inductive vect (A:Type) : nat -> Type :=
-  |nil_vect : vect A 0
+  |nil_vect : vect A O
   |cons_vect : forall n:nat, A -> vect A n -> vect A (S n).
 
 Arguments nil_vect {_}.
@@ -141,9 +141,9 @@ Instance Rel_vect {A A':Type} (RA : A ≈ A')
          (n m : nat) (Xn : n ≈ m) : Rel (vect A n) (vect A' m) :=
   fun v v' => FR_vect RA n m v v' Xn.
 
-Definition liftnil {A n} : forall (e : 0 ≈ n), vect A n :=
+Definition liftnil {A n} : forall (e : O ≈ n), vect A n :=
   match n with
-  | 0 => fun _ => [| |]
+  | O => fun _ => [| |]
   | S n => fun e => match e with end
   end.
 
@@ -155,7 +155,7 @@ Definition code_vect_arg {A A' : Type} (RA : A ≈ A')
     | a □ v =>
       fun m =>
         match m with
-        | 0 => fun _ => empty
+        | O => fun _ => empty
         | S m => fun Xn =>
                    {a':A' & {v':vect A' m & (a □ v) ≈ (a' □ v')}}
         end
@@ -193,9 +193,9 @@ Proof.
     try destruct Xn. 
 Defined.
 
-Definition liftnil_sym {A n} : forall (e : n ≈ 0), vect A n :=
+Definition liftnil_sym {A n} : forall (e : n ≈ O), vect A n :=
   match n with
-  | 0 => fun _ => [| |]
+  | O => fun _ => [| |]
   | S n => fun e => match e with end
   end.
 
@@ -207,7 +207,7 @@ Definition code_vect_arg_sym {A A' : Type} (RA : A ≈ A')
     | a' □ v' =>
       fun n =>
         match n with
-        | 0 => fun _ => empty
+        | O => fun _ => empty
         | S n => fun Xn =>
                    {a:A & {v:vect A n & (a □ v) ≈ (a' □ v')}}
         end
@@ -269,10 +269,13 @@ Notation "x = y" := (x = y :>_) : type_scope.
 Arguments eq_refl {_ _}. *)
 
 (* Version explicite avec des transports *)
-Instance Rel_eq {A A' : Type } (RA : A ≈ A')
+Definition Rel_eq {A A' : Type } (RA : A ≈ A')
           (x:A) (x':A') (Xx : x ≈ x')
           (y:A) (y':A') (Xy: y ≈ y') : Rel (x = y) (x' = y') := fun p q =>
     transport_eq (fun x' => x ≈ x') q Xx = transport_eq (fun x => x ≈ y') (inverse p) Xy.
+
+#[export] Hint Extern 0 (Rel (_ = _) (_ = _))  =>
+  unshelve refine (@Rel_eq _ _ _ _ _ _ _ _ _) : typeclass_instances.
 
 (* code_eq_arg était inutile, juste une simplification 
    avec refl ce qui désormais automatique *)
@@ -318,23 +321,26 @@ Instance FP_eq (A A' : Type) (eA : A ⋈ A')
 
 (*** Vectors with fording à la McBride ***)
 
+#[export] Hint Extern 0 (_ ≈ _) =>
+  compute: typeclass_instances.
+
 Inductive vectF (A:Type) (n : nat) : Type :=
-  |nilF : n = 0 -> vectF A n
+  |nilF : n = O -> vectF A n
   |consF : forall m:nat, A -> vectF A m -> S m = n -> vectF A n.
 
 Arguments nilF {_ _} _.
 Arguments consF {_ _} _ _ _ _.
 
+
 Fixpoint FRvectF {A A':Type} (RA : A ≈ A') 
          (n m : nat) (Xn : n ≈ m) (v : vectF A n)
   : forall  (v' : vectF A' m) , Type :=
   fun v' => match v , v' with
-  | nilF e , nilF e' => FR_eq FR_nat _ _ Xn 0 0 tt e e'
-  | nilF e , consF m' a' v' e' => empty
-  | consF m a v e , nilF e' => empty
+  | nilF e , nilF e' => e ≈ e'
   | consF m a v e , consF m' a' v' e' => 
     {Rm : FR_nat m m' & { _ : (_R RA) a a' &
-    { _ : FRvectF RA _ _  Rm v v' & FR_eq FR_nat (S m) (S m') Rm _ _ Xn e e' }}}
+    { _ : FRvectF RA _ _  Rm v v' & e ≈ e' }}}
+  | _ , _ => empty
   end.
 
 Instance Rel_vectF {A A':Type} (RA : A ≈ A') 
@@ -345,15 +351,15 @@ Definition codeF_arg {A A' : Type} (RA : A ≈ A')
       (n:nat) (m:nat) (Xn : n ≈ m) (v:vectF A n) : Type
   :=
     match v with
-      nilF e => { e' : m = 0 & FRvectF RA n m Xn (nilF e) (nilF e') }
+      nilF e => { e' : m = O & nilF e ≈ nilF e' }
     | consF n' a v e =>
       {m' : nat & { a':A' &  {v':vectF A' m' & { e' : S m' = m &
-      FRvectF RA n m Xn (consF n' a v e) (consF m' a' v' e')}}}}
+      consF n' a v e ≈ consF m' a' v' e'}}}}
     end.
 
 Definition EquivVectF_arg {A A' : Type} (RA : A ≈ A')
       (n:nat) (m:nat) (Xn : n ≈ m) (v:vectF A n) :
-  Equiv ({v' : vectF A' m & FRvectF RA n m Xn v v'})
+  Equiv ({v' : vectF A' m & v ≈ v'})
         (codeF_arg RA n m Xn v).  
 Proof.
   destruct v.
@@ -401,26 +407,30 @@ Proof.
 #[export] Hint Extern 0 (IsContr { _ : nat & _})  =>
   apply IsFun_sym_nat: typeclass_instances.
 
-Definition IsFunF {A A' : Type} (RA : A ≈ A') :
+
+Set Printing Universes. 
+
+Instance IsFunF {A A' : Type} (RA : A ≈ A') :
   forall n m Xn, IsFun (Rel_vectF RA n m Xn).
 Proof.
   intros n m Xn. intro v. revert m Xn.
   induction v; intros; isFun @EquivVectF_arg.
 Defined.
 
+
 Definition codeF_arg_sym {A A' : Type} (RA : A ≈ A')
       (n:nat) (m:nat) (Xn : n ≈ m) (v:vectF A' m) : Type
   :=
     match v with
-      nilF e' => { e : n = 0 & FRvectF RA n m Xn (nilF e) (nilF e') }
+      nilF e' => { e : n = O & nilF e ≈ nilF e' }
     | consF m' a' v' e' =>
       {n' : nat & { a:A & {v:vectF A n' & { e : S n' = n &
-      FRvectF RA n m Xn (consF n' a v e) (consF m' a' v' e')}}}}
+      consF n' a v e ≈ consF m' a' v' e'}}}}
     end.
 
 Definition EquivVectF_argSym {A A' : Type} (RA : A ≈ A')
       (n:nat) (m:nat) (Xn : n ≈ m) (v':vectF A' m) :
-  Equiv ({v : vectF A n & FRvectF RA n m Xn v v'})
+  Equiv ({v : vectF A n & v ≈ v'})
         (codeF_arg_sym RA n m Xn v').  
 Proof.
   rename v' into v. destruct v.
@@ -454,8 +464,10 @@ Defined.
   apply IsFunFSym: typeclass_instances.
 
 Definition _FP_vectR : @vectF ≈ @vectF.
-  intros A A' eA n m en. FP. 
-Defined. 
+  intros A A' eA n m en. FP.
+Defined.
+
+Set Printing Universes. 
 
 Instance FP_vectF (A A' : Type) (eA : A ≈ A')
   (n m : nat) (Xn : n ≈ m) :
