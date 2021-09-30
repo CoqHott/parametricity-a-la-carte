@@ -19,8 +19,9 @@ Set Universe Polymorphism.
 (* ###                      Type ⋈ Type                   ### *)
 (* ########################################################### *)
 
-Instance FR_Type_def@{i j} : Rel@{j j j} Type@{i} Type@{i} :=
- FR_Type@{i i i i i}.
+Set Printing Universes.
+
+Instance FR_Type_def : Rel Type Type := FR_Type.
 
 Hint Extern 0 (?x ≈ ?y) => eassumption : typeclass_instances.
 

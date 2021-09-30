@@ -126,9 +126,6 @@ Ltac isFun f :=
 Ltac FP :=
    unshelve econstructor; split ; typeclasses eauto.
 
-(* Ltac isFunSym fsym := *)
-(*   eapply IsFun_sym; [ eapply fsym | typeclasses eauto ]. *)
-
 #[export] Hint Unfold sym : typeclass_instances.
 
 #[export] Hint Unfold rel : typeclass_instances.
@@ -139,10 +136,6 @@ Ltac FP :=
 (* ###########################################################*)
 (* ###                     nat ⋈ nat                       ###*)
 (* ###########################################################*)
-
-Inductive nat@{i} : Type@{i} := O : nat | S : nat -> nat. 
-
-Notation "0" := O.
 
 Fixpoint FR_nat (n m : nat) : Type :=
   match n , m with
