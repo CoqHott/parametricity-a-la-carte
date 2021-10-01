@@ -1,8 +1,8 @@
 Require Import HoTT.
 Require Import HoTT_axioms.
 Require Import Equiv_def.
-Require Import V3_Param_CComega_fixpoint.
-Require Import V3_Param_ind_fixpoint.
+Require Import Param_CComega.
+Require Import Param_ind_parameters.
 From Coq Require Import ssreflect.
 
 Set Universe Polymorphism.
@@ -491,7 +491,7 @@ Definition FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n
 Proof.
   induction v; intros m v' Xn; destruct v'; cbn; intro Xv.
   - unfold rel in *. unfold Rel_eq; cbn. unfold Rel_nat in Xn; cbn in Xn.
-    destruct Xn. unfold FR_O. reflexivity.
+    destruct Xn. unfold FR_0. reflexivity.
   - destruct Xn.
   - destruct Xn.
   - destruct Xv as [Xa Xv]. exists Xn, Xa.

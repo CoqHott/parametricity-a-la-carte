@@ -1,7 +1,7 @@
 Require Import HoTT.
 Require Import HoTT_axioms.
 Require Import Equiv_def.
-Require Import V3_Param_CComega_fixpoint.
+Require Import Param_CComega.
 From Coq Require Import ssreflect.
 
 Set Universe Polymorphism.
