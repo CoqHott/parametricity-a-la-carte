@@ -475,5 +475,68 @@ Instance FP_vectF (A A' : Type) (eA : A ≈ A')
 
 
 
-  
 
+(* Lifting *)
+  
+Fixpoint vect_to_forde {A:Type} {n:nat} (v : vect A n) : vectF A n.
+Proof.
+  destruct v.
+  exact (nilF eq_refl).
+  exact (consF n a (vect_to_forde A n v) eq_refl).
+Defined.
+
+(* Fixpoint vect_to_forde (A:Type) (n:nat) (v : vect A n) : vectF A n :=
+  match v with
+    |[| |] => (nilF eq_refl)
+    |a □ v => (consF n a (vect_to_forde A n v) eq_refl)
+  end. *)
+
+
+Definition FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
+  forall m v' Xn,  FR_vect RA n m v v' Xn -> FRvectF RA n m Xn (vect_to_forde v) (vect_to_forde v').
+Proof.
+  induction v; intros m v' Xn; destruct v'; cbn; intro Xv.
+  - unfold rel in *. unfold Rel_eq; cbn. unfold Rel_nat in Xn; cbn in Xn.
+    destruct Xn. unfold FR_O. reflexivity.
+  - destruct Xn.
+  - destruct Xn.
+  - destruct Xv as [Xa Xv]. exists Xn, Xa.
+    exists (IHv n0 v' Xn Xv).
+    unfold rel in *. unfold Rel_eq. cbn. unfold FR_S. reflexivity.
+Defined.
+
+(* vectors by forded ones *)
+
+(* Inductive vect (A:Type) : nat -> Type :=
+  |nil_vect : vect A O
+  |cons_vect : forall n:nat, A -> vect A n -> vect A (S n). *)
+
+(* Inductive vectF (A:Type) (n : nat) : Type :=
+  |nilF : n = O -> vectF A n
+  |consF : forall m:nat, A -> vectF A m -> S m = n -> vectF A n. *)
+
+Definition FR_vect_bis {A A':Type} (RA : A ≈ A') (n : nat) (v : vect A n)
+        (m : nat) (v' : vect A' m) (Xn : n ≈ m) : Type :=
+        FRvectF RA n m Xn (vect_to_forde v) (vect_to_forde v').
+
+Instance Rel_vect_bis {A A':Type} (RA : A ≈ A') 
+     (n m : nat) (Xn : n ≈ m) : Rel (vect A n) (vect A' m) :=
+     fun v v' => FR_vect_bis RA n v m v' Xn.
+
+Definition IsFun_vect_bis {A A':Type} (RA : A ≈ A') : 
+      forall n m Xn, IsFun(Rel_vect_bis RA n m Xn).
+Proof.
+  intros n m Xn. intro v. 
+  unfold Rel_vect_bis. unfold FR_vect_bis.
+  (* expression as a "subset" *)
+  eapply (contr_equiv2 {v' : vect A' m & {vF' : vectF A' m & {p : vect_to_forde v' = vF' & FRvectF RA n m Xn (vect_to_forde v) vF'}}}).
+  1:{eapply EquivSigma; intro v'.
+     eapply equiv_compose. apply SigmaSigma. cbn.
+     eapply (@IsContrSigma_domain 
+                ({a : vectF A' m & vect_to_forde v' = a}) 
+                (fun z => FRvectF RA n m Xn (vect_to_forde v) z .1)
+                (IsContrSingleton_r)
+                ). }
+  eapply contr_equiv2. apply swap_sigma. cbn.
+  (* what to do now ? *)
+Admitted.

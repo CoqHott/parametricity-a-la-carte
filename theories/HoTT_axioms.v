@@ -314,6 +314,19 @@ Proof.
     -- intro r; destruct r. reflexivity.
 Defined.
   
+Definition IsContrSigma_domain {A : Type} {B : A -> Type} (C : IsContr A) :
+      Equiv {a:A & B a} (B C.1).
+Proof.
+  unshelve econstructor.
+  - intros [a b]. exact ((C.2 a)^ # b).
+  - unshelve eapply isequiv_adjointify.
+    -- intro b. exact (C.1; b).
+    -- intros [a b]. apply path_sigma_uncurried; unshelve econstructor; cbn.
+       exact (C.2 a). apply transport_pV.
+    -- intro x. cbn beta zeta iota.
+        assert (C.2 C.1 = eq_refl). apply path2_contr.
+        rewrite X. reflexivity. 
+Defined. 
 
 Definition IsContrSigma_codomain {A : Type} {B : A -> Type} (C :forall a :A, IsContr(B a)) :
   Equiv {a : A & B a} A.
