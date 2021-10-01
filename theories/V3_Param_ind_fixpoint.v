@@ -126,9 +126,6 @@ Ltac isFun f :=
 Ltac FP :=
    unshelve econstructor; split ; typeclasses eauto.
 
-(* Ltac isFunSym fsym := *)
-(*   eapply IsFun_sym; [ eapply fsym | typeclasses eauto ]. *)
-
 #[export] Hint Unfold sym : typeclass_instances.
 
 #[export] Hint Unfold rel : typeclass_instances.
@@ -140,11 +137,9 @@ Ltac FP :=
 (* ###                     nat ⋈ nat                       ###*)
 (* ###########################################################*)
 
-Inductive nat@{i} : Type@{i} := O : nat | S : nat -> nat. 
-
 Fixpoint FR_nat (n m : nat) : Type :=
   match n , m with
-    | O , O => unit
+    | 0 , 0 => unit
     | S n , S m => FR_nat n m
     | _ , _ => empty
   end.
@@ -154,7 +149,7 @@ Instance Rel_nat : Rel nat nat := FR_nat.
 Definition code_nat_arg (n : nat) : 
   Type :=
   match n with
-    O => FR_nat O O
+    0 => FR_nat 0 0
   | S n => {m : nat & FR_nat (S n) (S m)}
   end. 
 
@@ -163,15 +158,15 @@ Definition Equiv_nat_arg (n : nat) :
 Proof.
   destruct n as [ | n ]; unshelve econstructor ; cbn. 
   - exact (fun lr => match lr with
-                         ( O ; r ) => tt
+                         ( 0 ; r ) => tt
                        | ( S m ; r ) => match r with end  
                        end).
   - exact (fun lr => match lr with
-                         ( O ; r ) => match r with end 
+                         ( 0 ; r ) => match r with end 
                        | ( S m ; r ) => (m ; r)
                        end).
   - unshelve eapply isequiv_adjointify.
-    -- exact (fun r => (O ; r)).
+    -- exact (fun r => (0 ; r)).
     -- intros [[| n] []]; reflexivity. 
     -- intros []. reflexivity.
   - unshelve eapply isequiv_adjointify.
@@ -188,7 +183,7 @@ Defined.
 Definition code_nat_arg_sym (n : nat) : 
   Type :=
   match n with
-    O => FR_nat O O
+    0 => FR_nat 0 0
   | S n => {m : nat & FR_nat (S m) (S n)}
   end.
 
@@ -197,15 +192,15 @@ Definition Equiv_nat_arg_sym (m : nat) :
 Proof.
   destruct m as [ | m ]; unshelve econstructor ; cbn. 
   - exact (fun lr => match lr with
-                         ( O ; r ) => tt
+                         ( 0 ; r ) => tt
                        | ( S m ; r ) => match r with end  
                        end).
   - exact (fun lr => match lr with
-                         ( O ; r ) => match r with end 
+                         ( 0 ; r ) => match r with end 
                        | ( S n ; r ) => (n ; r)
                        end).
   - unshelve eapply isequiv_adjointify.
-    -- exact (fun r => (O ; r)).
+    -- exact (fun r => (0 ; r)).
     -- intros [[| n] []]; reflexivity. 
     -- intros []. reflexivity.
   - unshelve eapply isequiv_adjointify.
@@ -226,9 +221,9 @@ Defined.
 #[export] Hint Extern 0 (nat ≈ nat) => exact FP_nat : typeclass_instances.
 #[export] Hint Extern 0 (nat ⋈ nat) => exact FP_nat : typeclass_instances.
 
-Definition FR_O : O ≈ O := tt. 
+Definition FR_0 : 0 ≈ 0 := tt. 
 
-#[export] Hint Extern 0 (O ≈ O) => exact FR_O : typeclass_instances.
+#[export] Hint Extern 0 (0 ≈ 0) => exact FR_0 : typeclass_instances.
 
 Definition FR_S : S ≈ S := fun n m e => e.
 

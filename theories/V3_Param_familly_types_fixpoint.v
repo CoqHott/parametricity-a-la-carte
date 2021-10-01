@@ -280,7 +280,7 @@ Definition Rel_eq {A A' : Type } (RA : A ≈ A')
 (* code_eq_arg était inutile, juste une simplification 
    avec refl ce qui désormais automatique *)
 
-Instance IsFun_eq {A A' : Type } (RA : A ≈ A')
+Instance IsFun_eq {A A' : Type} (RA : A ≈ A')
           (x:A) (x':A') (Xx : x ≈ x')
           (y:A) (y':A') (Xy: y ≈ y') :
           IsFun (Rel_eq RA x x' Xx y y' Xy).
@@ -408,7 +408,6 @@ Proof.
   apply IsFun_sym_nat: typeclass_instances.
 
 
-Set Printing Universes. 
 
 Instance IsFunF {A A' : Type} (RA : A ≈ A') :
   forall n m Xn, IsFun (Rel_vectF RA n m Xn).
@@ -467,11 +466,10 @@ Definition _FP_vectR : @vectF ≈ @vectF.
   intros A A' eA n m en. FP.
 Defined.
 
-Set Printing Universes. 
-
 Instance FP_vectF (A A' : Type) (eA : A ≈ A')
   (n m : nat) (Xn : n ≈ m) :
   vectF A n ⋈ vectF A' m := _FP_vectR A A' eA n m Xn.
+<<<<<<< HEAD
 
 
 
@@ -540,3 +538,5 @@ Proof.
   eapply contr_equiv2. apply swap_sigma. cbn.
   (* what to do now ? *)
 Admitted.
+=======
+>>>>>>> 3f07a4a2b498f44edcca45106704eff6b082616c
