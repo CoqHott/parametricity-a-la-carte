@@ -2,5 +2,6 @@
 theories/HoTT.v
 theories/HoTT_axioms.v
 theories/Equiv_def.v
-theories/V3_Param_CComega_fixpoint.v
-theories/V3_Param_ind_fixpoint.v
+theories/Param_CComega.v
+theories/Param_ind_parameters.v
+theories/Param_ind_indices.v
