@@ -469,10 +469,6 @@ Defined.
 Instance FP_vectF (A A' : Type) (eA : A ≈ A')
   (n m : nat) (Xn : n ≈ m) :
   vectF A n ⋈ vectF A' m := _FP_vectR A A' eA n m Xn.
-<<<<<<< HEAD
-
-
-
 
 (* Lifting *)
   
@@ -538,5 +534,3 @@ Proof.
   eapply contr_equiv2. apply swap_sigma. cbn.
   (* what to do now ? *)
 Admitted.
-=======
->>>>>>> 3f07a4a2b498f44edcca45106704eff6b082616c
