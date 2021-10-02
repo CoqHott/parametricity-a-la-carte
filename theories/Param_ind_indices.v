@@ -538,48 +538,38 @@ Proof.
   (* what to do now ? *)
 Admitted. *)
 
-(* Ltac contr_refl :=
-  unfold rel; unfold Rel_eq; apply contr_paths_contr; apply IsContr_unit. *)
-
-(* Definition IsEmb {A B : Type} (f : A -> B) := forall x y, Equiv (x = y) (f x = f y).
-
-Definition IsContr_embedding {A B:Type} (f : A -> B) (g : B -> A)
-      (emb : IsEmb f) (C : IsContr B) :
-      IsContr A.
-Proof.
-  apply IsIrr_inhab_IsContr.
-  - unfold IsIrr. intros x y.
-    apply (e_inv (emb x y)).
-    apply path_contr.
-  - exact (g C.1).
-Defined. *)
+Ltac contr_refl :=
+  unfold rel; unfold Rel_eq; apply contr_paths_contr; apply IsContr_unit.
 
 Definition IsWeakEmb {A B : Type} (f : A -> B) := forall x y, (f x = f y) -> (x = y).
 
-Definition IsContr_WeakEmb {A B:Type} (f : A -> B) (g : B -> A)
+Definition IsHProp_WeakEmb {A B:Type} (f : A -> B)
       (wemb : IsWeakEmb f) (C : IsContr B) :
-      IsContr A.
+      IsHProp A.
 Proof.
-  apply IsIrr_inhab_IsContr.
-  - unfold IsIrr. intros x y.
-    apply (wemb x y).
-    apply path_contr.
-  - exact (g C.1).
-Defined.
-
-Definition IsWeakEmb_vect {A:Type} {n:nat} : IsWeakEmb (@vect_to_forde A n).
-Proof.
-  intros v v'.
-  intro p. rewrite -(vect_sect v). rewrite -(vect_sect v'). apply ap. exact p.
+  apply IsIrr_to_IsHProp. intros x y.
+  apply (wemb x y).
+  apply path_contr.
 Defined.
 
 Definition IsFun_vect_bis' {A A':Type} (RA : A ≈ A') : 
       forall n m Xn, IsFun(Rel_vect_bis RA n m Xn).
 Proof.
   intros n m Xn v. unfold Rel_vect_bis. unfold FR_vect_bis.
-  unshelve eapply (@IsContr_WeakEmb _ {vF' : vectF A' m & FRvectF RA n m Xn (vect_to_forde v) vF'}).
-  - admit.
-  - admit.
-  - admit.
-  - exact (IsFunF RA n m Xn (vect_to_forde v)).
+  eapply IsHProp_inhab_isContr'.
+  - assert (
+    {vF' : vectF A' m & FRvectF RA n m Xn (vect_to_forde v) vF'}
+    ->
+    {y : vect A' m & FRvectF RA n m Xn (vect_to_forde v) (vect_to_forde y)}
+    ).
+    -- (* It looks like equivalent to proving e_retr which can't be done in the general case*)
+       intros [vF' XvF']. admit. 
+    -- exact (X (IsFunF RA n m Xn (vect_to_forde v)) .1) .
+  - unshelve eapply (@IsHProp_WeakEmb _ {vF' : vectF A' m & FRvectF RA n m Xn (vect_to_forde v) vF'}).
+    -- intros [v' XvF]. exists (vect_to_forde v'). exact XvF.
+    -- intros x y. destruct x as [v'1 XvF1]. destruct y as [v'2 XvF2].
+       intro p. apply path_sigma_uncurried. unshelve econstructor; cbn.
+       + rewrite -(vect_sect v'1). rewrite -(vect_sect v'2). apply ap. exact (p..1).
+       + admit. (* too complicated for me, even true *)
+    -- exact (IsFunF RA n m Xn (vect_to_forde v)).
 Admitted.

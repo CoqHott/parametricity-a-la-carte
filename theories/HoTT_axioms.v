@@ -135,6 +135,13 @@ Definition IsHProp_inhab_isContr A {H:A -> IsContr A} : IsHProp A.
   exact (@path_contr _ (H x) _ _).
 Defined.
 
+Definition IsHProp_inhab_isContr' {A:Type} (a:A) (H : IsHProp A) : IsContr A.
+Proof.
+  eapply IsIrr_inhab_IsContr.
+  apply (IsHProp_to_IsIrr A H).
+  exact a.
+Defined.
+  
 Definition IsHPropIsContr {A} : IsHProp (IsContr A).
 Admitted. 
 
