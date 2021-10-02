@@ -485,6 +485,20 @@ Defined.
     |a □ v => (consF n a (vect_to_forde A n v) eq_refl)
   end. *)
 
+Fixpoint forde_to_vect {A:Type} {n:nat} (vF : vectF A n) : vect A n.
+Proof.
+  destruct vF.
+  rewrite e. exact [| |].
+  rewrite -e. eapply cons_vect. exact a. exact (forde_to_vect A m vF).
+Defined.
+
+Fixpoint vect_sect {A:Type} {n:nat} (v : vect A n) :
+      forde_to_vect (vect_to_forde v) = v.
+Proof.
+  destruct v; cbn.
+  reflexivity.
+  apply ap. apply vect_sect.
+Defined.
 
 Definition FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
   forall m v' Xn,  FR_vect RA n m v v' Xn -> FRvectF RA n m Xn (vect_to_forde v) (vect_to_forde v').
@@ -533,4 +547,34 @@ Proof.
                 ). }
   eapply contr_equiv2. apply swap_sigma. cbn.
   (* what to do now ? *)
+Admitted.
+
+Ltac contr_refl :=
+  unfold rel; unfold Rel_eq; apply contr_paths_contr; apply IsContr_unit.
+
+(* prove it by induction ? *)
+Definition IsFun_vect_bis' {A A':Type} (RA : A ≈ A') : 
+      forall n m Xn, IsFun(Rel_vect_bis RA n m Xn).
+Proof.
+  intros n m Xn. intro v. 
+  unfold Rel_vect_bis. unfold FR_vect_bis.
+  revert Xn. revert m. induction v; intros m Xn.
+  - destruct m. 2 : destruct Xn.
+    apply (contr_equiv2 (FRvectF RA 0 0 Xn (vect_to_forde [||]) (vect_to_forde [||]) ) ).
+    2 : cbn. 2 : contr_refl.
+    1:{ cbn.
+    unshelve econstructor.
+    - intro r. exists [| |]. contr_refl.
+    - unshelve eapply isequiv_adjointify.
+      -- intros [y r]. contr_refl.
+      -- intro r. cbn. apply path2_contr.
+      -- intros [y r]. cbn.
+      admit.
+      }
+  - destruct m. destruct Xn.
+    apply (contr_equiv2 {a' : A' & {v' : vect A' m & FRvectF RA (S n) (S m) Xn (vect_to_forde (a □ v))
+    (vect_to_forde (a' □ v'))}}).
+    admit.
+    cbn. unfold rel. unfold Rel_eq. cbn.
+    (* how to get rid of rm in the general case ? *)
 Admitted.
