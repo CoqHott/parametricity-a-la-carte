@@ -471,7 +471,15 @@ Instance FP_vectF (A A' : Type) (eA : A ≈ A')
   vectF A n ⋈ vectF A' m := _FP_vectR A A' eA n m Xn.
 
 
-(* Proof that being a relation in vect implies being in forded ones *)
+
+
+
+(* Some definitions *)
+
+Ltac contr_refl :=
+  unfold rel; unfold Rel_eq; cbn;
+  try (apply contr_paths_contr; apply IsContr_unit);
+  try unfold FR_S; try reflexivity.
 
 Fixpoint vect_to_forde {A:Type} {n:nat} (v : vect A n) : vectF A n.
 Proof.
@@ -480,28 +488,11 @@ Proof.
   exact (consF n a (vect_to_forde A n v) eq_refl).
 Defined.
 
-Definition FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
-  forall m v' Xn,  FR_vect RA n m v v' Xn -> FRvectF RA n m Xn (vect_to_forde v) (vect_to_forde v').
-Proof.
-  induction v; intros m v' Xn; destruct v'; cbn; intro Xv.
-  - unfold rel in *. unfold Rel_eq; cbn. unfold Rel_nat in Xn; cbn in Xn.
-    destruct Xn. unfold FR_0. reflexivity.
-  - destruct Xn.
-  - destruct Xn.
-  - destruct Xv as [Xa Xv]. exists Xn, Xa.
-    exists (IHv n0 v' Xn Xv).
-    unfold rel in *. unfold Rel_eq. cbn. unfold FR_S. reflexivity.
-Defined.
-
-(* ###########################################################*)
-(* ###    WORK IN PROGRESS : vectors by forded one         ###*)
-(* ###########################################################*)
-  
 Fixpoint forde_to_vect {A:Type} {n:nat} (vF : vectF A n) : vect A n.
 Proof.
   destruct vF.
-  rewrite e. exact [| |].
-  rewrite -e. eapply cons_vect. exact a. exact (forde_to_vect A m vF).
+  - destruct n. exact [| |]. inversion e.
+  - rewrite -e. eapply cons_vect. exact a. exact (forde_to_vect A m vF).
 Defined.
 
 Fixpoint vect_sect {A:Type} {n:nat} (v : vect A n) :
@@ -512,6 +503,29 @@ Proof.
   apply ap. apply vect_sect.
 Defined.
 
+(* proof that the lifting preserve relation *)
+Definition FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
+  forall m v' Xn,  FR_vect RA n m v v' Xn -> FRvectF RA n m Xn (vect_to_forde v) (vect_to_forde v').
+Proof.
+  induction v; intros m v' Xn; destruct v'; cbn; intro Xv.
+  - contr_refl. 
+  - destruct Xn.
+  - destruct Xn.
+  - destruct Xv as [Xa Xv]. exists Xn, Xa.
+    exists (IHv n0 v' Xn Xv). contr_refl. 
+Defined.
+
+
+(* ###########################################################*)
+(* ###    WORK IN PROGRESS : vectors by forded one         ###*)
+(* ###########################################################*)
+
+(* both ideas fail on the same place :
+  -> defining a converse function, yet the second might be easier 
+  -> Proving that the direct function IsWeakEmb.
+     Maybe possible in both case but I didn't succed *)
+
+(* First idea, define a new relation *)
 Definition FR_vect_bis {A A':Type} (RA : A ≈ A') (n : nat) (v : vect A n)
         (m : nat) (v' : vect A' m) (Xn : n ≈ m) : Type :=
         FRvectF RA n m Xn (vect_to_forde v) (vect_to_forde v').
@@ -520,56 +534,71 @@ Instance Rel_vect_bis {A A':Type} (RA : A ≈ A')
      (n m : nat) (Xn : n ≈ m) : Rel (vect A n) (vect A' m) :=
      fun v v' => FR_vect_bis RA n v m v' Xn.
 
-(* Definition IsFun_vect_bis {A A':Type} (RA : A ≈ A') : 
-      forall n m Xn, IsFun(Rel_vect_bis RA n m Xn).
+Definition Svect_to_forde_bis {A A':Type} (RA : A ≈ A') :
+     forall n m Xn v,
+     {v' : vect A' m & FRvectF RA n m Xn (vect_to_forde v) (vect_to_forde v')}
+     ->
+     {vF' : vectF A' m & FRvectF RA n m Xn (vect_to_forde v) vF'}.
 Proof.
-  intros n m Xn. intro v. 
-  unfold Rel_vect_bis. unfold FR_vect_bis.
-  (* expression as a "subset" *)
-  eapply (contr_equiv2 {v' : vect A' m & {vF' : vectF A' m & {p : vect_to_forde v' = vF' & FRvectF RA n m Xn (vect_to_forde v) vF'}}}).
-  1:{eapply EquivSigma; intro v'.
-     eapply equiv_compose. apply SigmaSigma. cbn.
-     eapply (@IsContrSigma_domain 
-                ({a : vectF A' m & vect_to_forde v' = a}) 
-                (fun z => FRvectF RA n m Xn (vect_to_forde v) z .1)
-                (IsContrSingleton_r)
-                ). }
-  eapply contr_equiv2. apply swap_sigma. cbn.
-  (* what to do now ? *)
-Admitted. *)
-
-Ltac contr_refl :=
-  unfold rel; unfold Rel_eq; apply contr_paths_contr; apply IsContr_unit.
-
-Definition IsWeakEmb {A B : Type} (f : A -> B) := forall x y, (f x = f y) -> (x = y).
-
-Definition IsHProp_WeakEmb {A B:Type} (f : A -> B)
-      (wemb : IsWeakEmb f) (C : IsContr B) :
-      IsHProp A.
-Proof.
-  apply IsIrr_to_IsHProp. intros x y.
-  apply (wemb x y).
-  apply path_contr.
+  intros n m Xn v. intros [v' XFv].
+  exists (vect_to_forde v'). exact XFv.
 Defined.
+
+(* pbl need e_retr ? *)
+Definition Sfodre_to_vect_bis {A A':Type} (RA : A ≈ A') :
+     forall n m Xn v,
+     {vF' : vectF A' m & FRvectF RA n m Xn (vect_to_forde v) vF'}
+     ->
+     {v' : vect A' m & FRvectF RA n m Xn (vect_to_forde v) (vect_to_forde v')}.
+Proof.
+Admitted.
 
 Definition IsFun_vect_bis' {A A':Type} (RA : A ≈ A') : 
       forall n m Xn, IsFun(Rel_vect_bis RA n m Xn).
 Proof.
   intros n m Xn v. unfold Rel_vect_bis. unfold FR_vect_bis.
   eapply IsHProp_inhab_isContr'.
-  - assert (
-    {vF' : vectF A' m & FRvectF RA n m Xn (vect_to_forde v) vF'}
-    ->
-    {y : vect A' m & FRvectF RA n m Xn (vect_to_forde v) (vect_to_forde y)}
-    ).
-    -- (* It looks like equivalent to proving e_retr which can't be done in the general case*)
-       intros [vF' XvF']. admit. 
-    -- exact (X (IsFunF RA n m Xn (vect_to_forde v)) .1) .
-  - unshelve eapply (@IsHProp_WeakEmb _ {vF' : vectF A' m & FRvectF RA n m Xn (vect_to_forde v) vF'}).
-    -- intros [v' XvF]. exists (vect_to_forde v'). exact XvF.
+  - exact (Sfodre_to_vect_bis RA n m Xn v (IsFunF RA n m Xn (vect_to_forde v)) .1) .
+  - unshelve eapply (IsHProp_WeakEmb (Svect_to_forde_bis RA n m Xn v)).
     -- intros x y. destruct x as [v'1 XvF1]. destruct y as [v'2 XvF2].
        intro p. apply path_sigma_uncurried. unshelve econstructor; cbn.
        + rewrite -(vect_sect v'1). rewrite -(vect_sect v'2). apply ap. exact (p..1).
-       + admit. (* too complicated for me, even true *)
+       + admit. (* too complicated for me, even if true *)
+    -- exact (IsFunF RA n m Xn (vect_to_forde v)).
+Admitted.
+
+
+
+(* Second idea keep the former definition but use the lifting ?*)
+Definition Svect_to_forde {A A':Type} (RA : A ≈ A') :
+      forall n m Xn v,
+      {v' : vect A' m & Rel_vect RA n m Xn v v'}
+      ->
+      {vF' : vectF A' m & FRvectF RA n m Xn (vect_to_forde v) vF'}.
+Proof.
+  intros n m Xn v. intros [v' Xv].
+  exists (vect_to_forde v').
+  apply (FRvect_to_FRvectF). exact Xv.
+Defined.
+
+Definition Sforde_to_vect {A A':Type} (RA : A ≈ A') :
+      forall n m Xn v,
+      {vF' : vectF A' m & FRvectF RA n m Xn (vect_to_forde v) vF'}
+      ->
+      {v' : vect A' m & Rel_vect RA n m Xn v v'}.
+Proof.
+Admitted.
+
+Definition IsFun_vect' {A A':Type} (RA : A ≈ A') :
+      forall n m Xn, IsFun (Rel_vect RA n m Xn).
+Proof.
+  intros n m Xn v.
+  apply IsHProp_inhab_isContr'.
+  - apply Sforde_to_vect. exact ( (IsFunF RA n m Xn (vect_to_forde v)) .1) .
+  - unshelve eapply (IsHProp_WeakEmb (Svect_to_forde RA n m Xn v)).
+    -- intros x y; destruct x as [v'1 Xv1]; destruct y as [v'2 Xv2].
+       cbn. intros p. apply path_sigma_uncurried; unshelve econstructor; cbn.
+       + rewrite -(vect_sect v'1). rewrite -(vect_sect v'2). apply ap. exact (p ..1) .
+       + admit. (* how to simplifiy *)
     -- exact (IsFunF RA n m Xn (vect_to_forde v)).
 Admitted.

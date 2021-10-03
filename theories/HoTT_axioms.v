@@ -142,6 +142,17 @@ Proof.
   exact a.
 Defined.
   
+Definition IsWeakEmb {A B : Type} (f : A -> B) := forall x y, (f x = f y) -> (x = y).
+
+Definition IsHProp_WeakEmb {A B:Type} (f : A -> B)
+      (wemb : IsWeakEmb f) (C : IsContr B) :
+      IsHProp A.
+Proof.
+  apply IsIrr_to_IsHProp. intros x y.
+  apply (wemb x y).
+  apply path_contr.
+Defined.
+
 Definition IsHPropIsContr {A} : IsHProp (IsContr A).
 Admitted. 
 
