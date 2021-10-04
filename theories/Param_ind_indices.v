@@ -566,33 +566,35 @@ Instance FP_vect_bis (A A' : Type) (eA : A ≈ A')
   
   
 (*** proof that the lifting preserve relation ***)
-Definition FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
+Fixpoint FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
   forall {m} v' Xn,  Rel_vect RA n m Xn v v' -> Rel_vect_bis RA n m Xn v v'.
 Proof.
   induction v; intros m v' Xn; destruct v'; cbn; intro Xv; try auto.
   - contr_refl. 
   - destruct Xv as [Xa Xv]. exists Xn, Xa.
-    exists (IHv n0 v' Xn Xv). contr_refl. 
+    unshelve econstructor. eapply FRvect_to_FRvectF.
+    exact Xv. contr_refl. 
 Defined.
 
-Definition FRvectF_to_FRvect {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
+Fixpoint FRvectF_to_FRvect {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
   forall {m:nat} v' Xn,  Rel_vect_bis RA n m Xn v v' -> Rel_vect RA n m Xn v v'. 
 Proof.
   unfold Rel_vect_bis, FR_vect_bis, Rel_vect.
   induction v; intros m v' Xn; destruct v'; cbn; intro Xv; try auto.
   destruct Xv as [Xn' [Xa [Xv Xeq]]].
   unfold rel, Rel_eq in Xeq; cbn in Xeq; unfold FR_S in Xeq; destruct Xeq.
-  exists Xa. exact (IHv n0 v' Xn' Xv).
+  exists Xa. eapply FRvectF_to_FRvect. exact Xv.
 Defined.
 
 Definition FRvect_sect {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
-  forall {m:nat} (v':vect A' m) Xn Xv,  FRvectF_to_FRvect RA v v' Xn (FRvect_to_FRvectF RA v v' Xn Xv) = Xv.
+  forall {m:nat} (v':vect A' m) Xn Xv, FRvectF_to_FRvect RA v v' Xn (FRvect_to_FRvectF RA v v' Xn Xv) = Xv.
 Proof.
-  induction v; intros m v' Xn; destruct v'; intro Xv; try auto; try reflexivity.
-  - destruct Xn, Xv; reflexivity.
+  induction v; intros m v' Xn; destruct v'; intro Xv; try easy.
+  - cbn in *. destruct Xn, Xv; reflexivity.
   - destruct Xv as [Xa Xv]. 
     apply path_sigma_uncurried; unshelve econstructor.
-    reflexivity. unfold transport_eq. admit.
+    reflexivity. unfold transport_eq.
+    admit.
 Admitted.
 
 Definition FRvect_retr {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
@@ -600,10 +602,10 @@ Definition FRvect_retr {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
 Proof.
   unfold Rel_vect_bis, FR_vect_bis, Rel_vect.
   induction v; intros m v' Xn; destruct v'; intro Xv; try auto; try reflexivity.
-  - destruct Xn; cbn. eapply path_contr.
+  - destruct Xn; cbn in *. eapply path_contr.
   - destruct Xv as [Xn' [Xa [Xv Xeq]]].
     unfold rel, Rel_eq in Xeq; cbn in Xeq; unfold FR_S in Xeq; destruct Xeq.
-    apply path_sigma_uncurried; unshelve econstructor. cbn. reflexivity. unfold transport_eq.
-    apply path_sigma_uncurried; unshelve econstructor. cbn. reflexivity. unfold transport_eq.
+    apply path_sigma_uncurried; unshelve econstructor. easy. unfold transport_eq.
+    apply path_sigma_uncurried; unshelve econstructor. easy. unfold transport_eq.
     admit.
 Admitted. 
