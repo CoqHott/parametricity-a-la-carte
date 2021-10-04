@@ -126,6 +126,15 @@ Ltac isFun f :=
 Ltac FP :=
    unshelve econstructor; split ; typeclasses eauto.
 
+Ltac rdestruct_ l :=
+  let x := fresh "x" in let y := fresh "y" in 
+  first [ destruct l as [ x y ] ; rdestruct_ x ; rdestruct_ y |
+          destruct l as [] |
+          idtac
+        ]. 
+
+Ltac rdestruct := repeat (let l := fresh "l" in intro l ; rdestruct_ l).
+
 #[export] Hint Unfold sym : typeclass_instances.
 
 #[export] Hint Unfold rel : typeclass_instances.
@@ -167,12 +176,12 @@ Proof.
                        end).
   - unshelve eapply isequiv_adjointify.
     -- exact (fun r => (0 ; r)).
-    -- intros [[| n] []]; reflexivity. 
-    -- intros []. reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
   - unshelve eapply isequiv_adjointify.
     -- intros [m r]. exact (S m ; r ).
-    -- intros [[ | m] r]; [ destruct r | reflexivity ].
-    -- intros [m r]; try reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_nat : IsFun FR_nat.
@@ -201,12 +210,12 @@ Proof.
                        end).
   - unshelve eapply isequiv_adjointify.
     -- exact (fun r => (0 ; r)).
-    -- intros [[| n] []]; reflexivity. 
-    -- intros []. reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
   - unshelve eapply isequiv_adjointify.
     -- intros [n r]. exact (S n ; r ).
-    -- intros [[ | n] r]; [ destruct r | reflexivity ].
-    -- intros [n r]; try reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_sym_nat : IsFun (sym FR_nat). 
@@ -236,15 +245,15 @@ Proof.
   intros P Q HPQ P0 Q0 H0 PS QS HS. 
   unfold rel, FR_Forall. refine (nat_rect _ _ _).
   - refine (nat_rect _ _ _).
-    * intros []. exact H0.
+    * cbn. intros []. exact H0.
     * intros n Ind []. 
   - intros n Ind. refine (nat_rect _ _ _).
     * intros [].
     * intros m _ Hn. exact (HS n m Hn _ _ (Ind m Hn)).
 Defined. 
   
-  (* ###########################################################*)
-(* ###                   A ⊔ B ⋈ A' ⊔ B'                  ###*)
+(* ###########################################################*)
+(* ###                   A ⊔ B ⋈ A' ⊔ B'                   ###*)
 (* ###########################################################*)
 
 Inductive somme (A:Type) (B:Type) : Type :=
@@ -289,12 +298,12 @@ Proof.
                        end).
   - unshelve eapply isequiv_adjointify.
     -- intros [a' r]. exact (inl a' ; r).
-    -- intros [[a' | b'] r]; [ reflexivity | destruct r ].
-    -- intros [a' r]. reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
   - unshelve eapply isequiv_adjointify.
     -- intros [b' r]. exact (inr b' ; r ).
-    -- intros [[a' | b'] r]; [ destruct r | reflexivity ].
-    -- intros [b' r]; try reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_somme {A A' B B' : Type} 
@@ -327,12 +336,12 @@ Proof.
                        end).
   - unshelve eapply isequiv_adjointify.
     -- intros [a' r]. exact (inl a' ; r).
-    -- intros [[a' | b'] r]; [ reflexivity | destruct r ].
-    -- intros [a' r]. reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
   - unshelve eapply isequiv_adjointify.
     -- intros [b' r]. exact (inr b' ; r ).
-    -- intros [[a' | b'] r]; [ destruct r | reflexivity ].
-    -- intros [b' r]; try reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_sym_somme {A A' B B' : Type} 
@@ -405,27 +414,25 @@ Definition code_list_arg {A A' : Type} (RA : A ≈ A') (l : list A) : Type :=
     [] => [] ≈ []
   | cons a l => {a':_ & {l':_ & (a::l) ≈ (a'::l')}}
   end.
-
+                      
 Definition Equiv_list_arg {A A' : Type} (RA : A ≈ A') (l: list A) :
       Equiv ({y : list A' & l ≈ y}) (code_list_arg RA l).
 Proof.
-  destruct l as [ | a l]; unfold code_list_arg; unshelve econstructor.  
-  - exact (fun lr => match lr with
-                         ([] ; r) => tt
-                       | (a' :: l' ; r) => match r with end
-                       end).
-  - exact (fun lr => match lr with
-                         ([] ; r) => match r with end
-                       | (a' :: l' ; r) => (a' ; ( l' ; r)) 
-                       end).
-  - unshelve eapply isequiv_adjointify.
-    -- intro r. exact ( [] ; r).
-    -- intros [[| a' l'] []] ; reflexivity.
-    -- intro r; destruct r. reflexivity. 
-  - unshelve eapply isequiv_adjointify.
-    -- intros [a' [l' r]]. exact ( a'::l' ; r).
-    -- intros [[|a' l'] []]; reflexivity.
-    -- intros [a' [l' []]]; reflexivity.
+  unshelve econstructor; [idtac | unshelve eapply isequiv_adjointify ]; revert l. 
+  - exact (fun l => match l with [] => fun lr => match lr with
+                                          ([] ; r) => tt
+                                        | (a' :: l' ; r) => match r with end
+                                        end
+                   | (a :: l) => fun lr => match lr with
+                                             ([] ; r) => match r with end
+                                           | (a' :: l' ; r) => (a' ; ( l' ; r)) 
+                                           end
+                    end).
+  - intro l; destruct l.
+    + cbn. exact (fun r => ([] ; r)).
+    + cbn. exact (fun r => match r with (a' ; (l' ; r)) => ( a'::l' ; r) end).
+  - rdestruct; reflexivity.  
+  - rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_list (A A' : Type) (RA : A ≈ A') : IsFun (FR_list RA).
@@ -453,12 +460,12 @@ Proof.
                        end).
   - unshelve eapply isequiv_adjointify.
     -- intro r. exists []. exact r.
-    -- intros [[| a' l'] []] ; reflexivity.
-    -- intro r; destruct r. reflexivity. 
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
   - unshelve eapply isequiv_adjointify.
     -- intros [a' [l' r]]. exact ( a'::l' ; r).
-    -- intros [[|a' l'] []]; reflexivity.
-    -- intros [a' [l' []]]; reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_sym_list (A A' : Type) (RA : A ≈ A') : IsFun (sym (FR_list RA)).
@@ -529,17 +536,15 @@ Proof.
       exact tt.
     - unshelve eapply isequiv_adjointify.
       -- intro r. exists nil_tree. exact r.
-      -- intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r. 
-         reflexivity.
-      -- intro r; destruct r. reflexivity.
+      -- rdestruct; reflexivity. 
+      -- rdestruct; reflexivity. 
   * unshelve econstructor.
   - intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r.
     exists ls', a', rs', x. exact s.
   - unshelve eapply isequiv_adjointify.
     -- intros [ls' [a' [rs' r]]]. exists (cons_tree ls' a' rs'). exact r.
-    -- intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r.
-       reflexivity.
-    -- intros [ls' [a' [rs' r]]]. destruct r. reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_tree {A A' : Type} (RA : A ≈ A') : IsFun (FR_tree RA).
@@ -563,17 +568,15 @@ Proof.
       exact tt.
     - unshelve eapply isequiv_adjointify.
       -- intro r. exists nil_tree. exact r.
-      -- intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r. 
-         reflexivity.
-      -- intro r; destruct r. reflexivity.
+      -- rdestruct; reflexivity. 
+      -- rdestruct; reflexivity. 
   * unshelve econstructor.
   - intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r.
     exists ls', a', rs', x. exact s.
   - unshelve eapply isequiv_adjointify.
     -- intros [ls' [a' [rs' r]]]. exists (cons_tree ls' a' rs'). exact r.
-    -- intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r.
-       reflexivity.
-    -- intros [ls' [a' [rs' r]]]. destruct r. reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_sym_tree {A A' : Type} (RA : A ≈ A') : IsFun (sym (FR_tree RA)).
@@ -644,8 +647,8 @@ Proof.
     exists a', b', x. exact r.
   - unshelve eapply isequiv_adjointify.
     -- intros [a' [b' r]]. exists (a';b'). exact r.
-    -- intros [y r]; destruct y; try destruct r; try reflexivity.
-    -- intros [a' [b' r]]; try destruct r; try reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
@@ -682,8 +685,8 @@ Proof.
     exists a', b', x. exact r.
   - unshelve eapply isequiv_adjointify.
     -- intros [a' [b' r]]. exists (a';b'). exact r.
-    -- intros [y r]; destruct y; try destruct r; try reflexivity.
-    -- intros [a' [b' r]]; try destruct r; try reflexivity.
+    -- rdestruct; reflexivity. 
+    -- rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_sym_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
