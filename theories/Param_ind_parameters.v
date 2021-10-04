@@ -111,6 +111,8 @@ Defined.
 
 Ltac erefine f  := first [ refine f | refine (f _) | refine (f _ _) | refine (f _ _ _) | refine (f _ _ _ _) | refine (f _ _ _ _ _) | refine (f _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _ _ _ _)  ].
 
+Ltac eapply_assumption := match goal with | H : _ |- _ => eapply H end.
+
 Ltac isFun f :=
   eapply contr_equiv2 ; try (apply Equiv_inverse; erefine f);
   try first [ eapply IsContr_telescope5 |
@@ -120,7 +122,7 @@ Ltac isFun f :=
               idtac 
              ];
   try first [
-        intros; match goal with | H : _ |- _ => eapply H end |
+        intros; eapply_assumption |
         cbn; typeclasses eauto ].
 
 Ltac FP :=
@@ -242,14 +244,8 @@ Definition FR_S : S ≈ S := fun n m e => e.
 
 Definition FR_nat_rect : @nat_rect ≈ @nat_rect. 
 Proof.
-  intros P Q HPQ P0 Q0 H0 PS QS HS. 
-  unfold rel, FR_Forall. refine (nat_rect _ _ _).
-  - refine (nat_rect _ _ _).
-    * cbn. intros []. exact H0.
-    * intros n Ind []. 
-  - intros n Ind. refine (nat_rect _ _ _).
-    * intros [].
-    * intros m _ Hn. exact (HS n m Hn _ _ (Ind m Hn)).
+  intros P Q HPQ P0 Q0 H0 PS QS HS n.
+  induction n ; rdestruct; eapply_assumption; eauto.
 Defined. 
   
 (* ###########################################################*)
@@ -374,14 +370,8 @@ Definition FP_inr : @inr ≈ @inr := fun A A' eA B B' eB b b' Rb => Rb.
 #[export] Hint Extern 0 (inr _ ≈ inr _) => refine (FP_inr _ _ _ _ _ _ _ _ _) : typeclass_instances.
 
 Definition FP_somme_rect : @somme_rect ≈ @somme_rect.
-intros A A' HA B B' HB P Q HPQ HinlP HinlQ Hinl HinrP HinrQ Hinr. 
-  unfold rel, FR_Forall. refine (somme_rect _ _ _ _ _).
-  - intro a. refine (somme_rect _ _ _ _ _).
-    * intros a' ea. exact (Hinl _ _ ea).
-    * intros _ []. 
-  - intros b. refine (somme_rect _ _ _ _ _).
-    * intros _ [].
-    * intros b' eb. exact (Hinr _ _ eb).
+intros A A' HA B B' HB P Q HPQ HinlP HinlQ Hinl HinrP HinrQ Hinr x. 
+induction x ; rdestruct; eapply_assumption; eauto.
 Defined. 
 
 (* ###########################################################*)
@@ -489,14 +479,8 @@ Definition FP_cons : @cons ≈ @cons := fun A A' eA a a' ea l l' el => (ea ; el)
 #[export] Hint Extern 0 (cons _ _ ≈ cons _ _) => refine (FP_cons _ _ _ _ _ _ _ _ _) : typeclass_instances.
 
 Definition FP_list_rect : @list_rect ≈ @list_rect.
-intros A A' HA P Q HPQ HnilP HnilQ Hnil HconsP HconsQ Hcons. 
-  unfold rel, FR_Forall. refine (list_rect _ _ _ _).
-  - refine (list_rect _ _ _ _).
-    * intros []. exact Hnil. 
-    * intros _ _ _ []. 
-  - intros a l IHl. refine (list_rect _ _ _ _).
-    * intros [].
-    * intros a' l' _ [ea el]. cbn. refine (Hcons _ _ ea _ _ el _ _ (IHl _ el)).
+  intros A B HAB P Q PQ anil bnil Hnil a b Hcons l.
+  induction l ; rdestruct; eapply_assumption; eauto.
 Defined. 
 
 (* ###########################################################*)
@@ -716,10 +700,8 @@ Definition FP_existT : @existT ≈ @existT := fun A A' eA B B' eB a a' ea b b' e
 #[export] Hint Extern 0 ((_ ; _) ≈ (_ ; _ )) => refine (FP_existT _ _ _ _ _ _ _ _ _ _ _ _) : typeclass_instances.
 
 Definition FP_sigT_rect : @sigT_rect ≈ @sigT_rect.
-  intros A A' eA B B' eB P Q ePQ HexP HexQ Hex.
-  refine (sigT_rect _ _ _ _); intros a b.
-  refine (sigT_rect _ _ _ _); intros a' b' [ea eb].
-  exact (Hex _ _ ea _ _ eb).
+  intros A A' eA B B' eB P Q ePQ HexP HexQ Hex x.
+  induction x ; rdestruct; eapply_assumption; eauto.
 Defined. 
   
 
