@@ -92,7 +92,7 @@ Proof.
   unshelve econstructor. 
   * split.
     + apply IsFun_forall; typeclasses eauto.
-    + eapply IsFun_sym. eapply Forall_sym_sym. apply IsFun_forall.
+    + eapply IsFun_Equiv. eapply Forall_sym_sym. apply IsFun_forall.
       - destruct eA as [RA FA]. apply IsWeakEquiv_sym. exact FA.
       - intros a' a H. destruct (eB a a' H) as [RB FB].
         apply IsWeakEquiv_sym. exact FB.

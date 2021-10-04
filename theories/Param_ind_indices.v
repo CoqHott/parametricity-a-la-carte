@@ -107,7 +107,7 @@ Proof.
   - exact (fun l l' => FR_indexed_list (_R eA) (_R eB) a a' l l' Xa).
   - split.
     + apply IsFun_indexed_list; typeclasses eauto.
-    + eapply IsFun_sym. refine (fun l l' => Indexed_list_sym_sym _ _ _ _ _ _ _ _).
+    + eapply IsFun_Equiv. refine (fun l l' => Indexed_list_sym_sym _ _ _ _ _ _ _ _).
       apply IsFun_indexed_list ; typeclasses eauto .
 Defined.
 
@@ -604,9 +604,9 @@ Proof.
   - destruct Xv as [Xn' [Xeq [Xa Xv]]]. 
     unfold rel, Rel_eq in Xeq; cbn in Xeq; unfold FR_S in Xeq; destruct Xeq.
     cbn.
-    eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
-    eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
-    eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
-    eapply FRvect_retr.
+    simple eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
+    simple eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
+    simple eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
+    unshelve eapply FRvect_retr.
 Admitted.
 
