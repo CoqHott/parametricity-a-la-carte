@@ -508,16 +508,6 @@ Proof.
   - apply (ap (fun vF => consF m a vF eq_refl)). apply vect_retr.
 Defined.
 
-(* proof that the lifting preserve relation *)
-Definition FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
-  forall m v' Xn,  FR_vect RA n m v v' Xn -> FRvectF RA n m Xn (vect_to_forded v) (vect_to_forded v').
-Proof.
-  induction v; intros m v' Xn; destruct v'; cbn; intro Xv; try auto.
-  - contr_refl. 
-  - destruct Xv as [Xa Xv]. exists Xn, Xa.
-    exists (IHv n0 v' Xn Xv). contr_refl. 
-Defined.
-
 Instance vectF_vect {A:Type} {n : nat} : vectF A n ≃ vect A n.
 unshelve econstructor.
 - apply forded_to_vect.
@@ -576,3 +566,13 @@ Instance FP_vect_bis (A A' : Type) (eA : A ≈ A')
   vect A n ⋈ vect A' m := _FP_vect_bis A A' eA n m Xn.
 
   
+(* proof that the lifting preserve relation *)
+Definition FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
+  forall m v' Xn,  Rel_vect RA n m Xn v v' -> Rel_vect_bis RA n m Xn v v'.
+Proof.
+  induction v; intros m v' Xn; destruct v'; cbn; intro Xv; try auto.
+  - contr_refl. 
+  - destruct Xv as [Xa Xv]. exists Xn, Xa.
+    exists (IHv n0 v' Xn Xv). contr_refl. 
+Defined.
+
