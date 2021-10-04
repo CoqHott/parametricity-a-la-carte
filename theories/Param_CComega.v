@@ -23,12 +23,6 @@ Set Printing Universes.
 
 Instance FR_Type_def : Rel Type Type := FR_Type.
 
-Hint Extern 0 (?x ≈ ?y) => eassumption : typeclass_instances.
-
-Hint Extern 0 (_R _ _ _) => eassumption : typeclass_instances.
-
-Hint Extern 0 (?x ⋈ ?y) => eassumption : typeclass_instances.
-
 Instance FP_Type : Type ⋈ Type.
 Proof.
   econstructor. unfold rel. unshelve econstructor => [A|B].
