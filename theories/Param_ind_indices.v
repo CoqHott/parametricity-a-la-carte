@@ -534,8 +534,8 @@ Definition IsFun_vect_bis {A A':Type} (RA : A ≈ A') :
 Proof.
   intros n m Xn v.
   eapply contr_equiv2; [ idtac | apply (IsFunF RA n m Xn (vect_to_forded v)) ].
-  unfold Rel_vect_bis, FR_vect_bis. unfold Rel_vectF.
-  unshelve eapply EquivSigmaGen. intro v'. rewrite vect_retr.
+  unfold Rel_vect_bis, FR_vect_bis. unfold rel, Rel_vectF.
+  unshelve eapply EquivSigmaGen. intro v'. cbn. rewrite vect_retr.
   apply Equiv_id.
 Defined. 
 

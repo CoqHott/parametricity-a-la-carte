@@ -6,14 +6,25 @@ Set Universe Polymorphism.
 
 (* ----- Definition and properties ----- *)
 
+Class Rel A B := rel : A -> B -> Type.
+
+ Hint Mode Rel ! ! : typeclass_instances.
+ Typeclasses Transparent Rel.
+    
+Arguments rel {_ _ _} _ _.
+    
+Notation "x ≈ y" := (rel x y) (at level 20).
+
+Hint Extern 0 (?x ≈ ?y) => eassumption : typeclass_instances.
+
 (* Definition IsWeakEquiv and proof IsWeakEquiv ≈ IsEquiv*)
-Class IsFun {A B} (R : A -> B -> Type) :=
-  isFun : forall x, IsContr {y:B & R x y} .
+Class IsFun {A B} (R : Rel A B) :=
+  isFun : forall x : A, IsContr {y:B & x ≈ y} .
 
 Hint Mode IsFun - - ! : typeclass_instances.
 
-Definition sym {A B} (R : A -> B -> Type) : B -> A -> Type := 
-  fun b a => R a b.
+Definition sym {A B} (R : Rel A B) : Rel B A :=
+  fun b a => a ≈ b.
 
 Typeclasses Opaque sym.
 
@@ -27,15 +38,6 @@ Arguments isWFunSym {_ _ _} _.
 
 #[export] Hint Extern 0 (IsFun ?A)  =>
   refine (@isWFunSym _ _ _ _) : typeclass_instances.
-
-Class Rel A B := rel : A -> B -> Type.
-
- Hint Mode Rel ! ! : typeclass_instances.
- Typeclasses Transparent Rel.
-    
-Arguments rel {_ _ _} _ _.
-    
-Notation "x ≈ y" := (rel x y) (at level 20).
     
 Class FR_Type A B := BuildFR_Type
     { _R :> Rel A B;
@@ -48,7 +50,9 @@ Arguments _R {_ _} _.
 Arguments _REquiv {_ _} _.
 Typeclasses Transparent _R.
 
+Hint Extern 0 (_R _ _ _) => eassumption : typeclass_instances.
 
+Hint Extern 0 (?x ⋈ ?y) => eassumption : typeclass_instances.
 
 Definition IsWeakEquiv_sym A B (R : A -> B -> Type) :
   forall (f : IsWeakEquiv R), IsWeakEquiv (sym R).
@@ -136,12 +140,6 @@ Proof.
   unfold Proj1Equiv in p; unfold Proj2Equiv in q.
   destruct p. simpl in q. destruct q. reflexivity.
 Defined.
-
-Lemma IsEquivHProp {A B : Type} (f:A->B) : IsHProp (IsEquiv(f)).
-Proof.
-Admitted.
-
-
 
 (* ----- (A ≃ B) ≃ (A ⋈ B) ----- *)
 

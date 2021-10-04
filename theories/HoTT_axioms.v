@@ -94,6 +94,10 @@ Fixpoint IsTrunc n A := match n with
 
 Definition IsHProp A := IsTrunc 1 A.
 
+Lemma IsEquivHProp {A B : Type} (f:A->B) : IsHProp (IsEquiv(f)).
+Proof.
+Admitted.
+
 
 (* begin contractible is the lowest level of truncation *)
 
