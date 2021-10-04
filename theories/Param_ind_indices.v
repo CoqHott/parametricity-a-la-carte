@@ -285,7 +285,7 @@ Instance IsFun_eq {A A' : Type} (RA : A ≈ A')
           (y:A) (y':A') (Xy: y ≈ y') :
           IsFun (Rel_eq RA x x' Xx y y' Xy).
 Proof.
-  intro p. destruct p.
+  intro p. destruct p. 
   apply (contr_equiv2 ((x'; Xx) = (y'; Xy))). 
   apply (@EqSigma A' (_R RA x) (x';Xx) (y';Xy)).
   apply contr_paths_contr. exact (isWFun (_REquiv RA) x).
@@ -337,7 +337,7 @@ Fixpoint FRvectF {A A':Type} (RA : A ≈ A')
   fun v' => match v , v' with
   | nilF e , nilF e' => e ≈ e'
   | consF m e a v , consF m' e' a' v' => 
-    {Rm : FR_nat m m' & {_ : e ≈ e' &  { _ : (_R RA) a a' &
+    {Rm : m ≈ m' & {_ : e ≈ e' &  { _ : a ≈ a' &
      FRvectF RA _ _ Rm v v' }}}
   | _ , _ => empty
   end.
@@ -531,7 +531,7 @@ Definition IsFun_vect_bis {A A':Type} (RA : A ≈ A') :
      forall n m Xn, IsFun (Rel_vect_bis RA n m Xn).
 Proof.
   intros n m Xn v.
-  eapply contr_equiv2; [ idtac | apply (IsFunF RA n m Xn (vect_to_forded v)) ].
+  eapply contr_equiv2; [ idtac | exact (IsFunF RA n m Xn (vect_to_forded v)) ].
   unfold Rel_vect_bis, FR_vect_bis. unfold rel, Rel_vectF.
   unshelve eapply EquivSigmaGen. intro v'. cbn. rewrite vect_retr.
   apply Equiv_id.
@@ -541,7 +541,7 @@ Definition IsFun_vect_bis_sym {A A':Type} (RA : A ≈ A') :
      forall n m Xn, IsFun (sym (Rel_vect_bis RA n m Xn)).
 Proof.
   intros n m Xn v'.
-  eapply contr_equiv2; [ idtac | apply (IsFunFSym RA n m Xn (vect_to_forded v')) ].
+  eapply contr_equiv2; [ idtac | exact (IsFunFSym RA n m Xn (vect_to_forded v')) ].
   unfold Rel_vect_bis, FR_vect_bis. unfold Rel_vectF.
   unshelve eapply EquivSigmaGen. intro v. cbn. rewrite vect_retr.
   apply Equiv_id.
@@ -558,7 +558,7 @@ Definition _FP_vect_bis : @vect ≈ @vect.
 Defined.
 
 Instance FP_vect_bis (A A' : Type) (eA : A ≈ A')
-  (n m : nat) (Xn : n ≈ m) :
+         (n m : nat) (Xn : n ≈ m) :
   vect A n ⋈ vect A' m := _FP_vect_bis A A' eA n m Xn.
 
   
@@ -610,4 +610,3 @@ Proof.
     simple eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
     simple eapply (FRvect_retr A A' RA n v n0 v' Xn').
 Defined.
-
