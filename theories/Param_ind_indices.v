@@ -471,8 +471,6 @@ Instance FP_vectF (A A' : Type) (eA : A ≈ A')
 
 
 
-
-
 (* Some definitions *)
 
 Ltac contr_refl :=
@@ -502,22 +500,20 @@ Proof.
   - apply ap. apply vect_sect.
 Defined.
 
-Fixpoint vect_retr {A:Type} {n:nat} (v : vectF A n) :
-      vect_to_forded (forded_to_vect v) = v.
+Fixpoint vect_retr {A:Type} {n:nat} (vF : vectF A n) :
+      vect_to_forded (forded_to_vect vF) = vF.
 Proof.
-  destruct v ; destruct e; cbn. 
+  destruct vF; destruct e; cbn. 
   - reflexivity. 
-  - apply (ap (fun v => consF m a v eq_refl)). apply vect_retr.
+  - apply (ap (fun vF => consF m a vF eq_refl)). apply vect_retr.
 Defined.
 
 (* proof that the lifting preserve relation *)
 Definition FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
   forall m v' Xn,  FR_vect RA n m v v' Xn -> FRvectF RA n m Xn (vect_to_forded v) (vect_to_forded v').
 Proof.
-  induction v; intros m v' Xn; destruct v'; cbn; intro Xv.
+  induction v; intros m v' Xn; destruct v'; cbn; intro Xv; try auto.
   - contr_refl. 
-  - destruct Xn.
-  - destruct Xn.
   - destruct Xv as [Xa Xv]. exists Xn, Xa.
     exists (IHv n0 v' Xn Xv). contr_refl. 
 Defined.
@@ -552,4 +548,31 @@ Proof.
   unshelve eapply EquivSigmaGen. intro v'. rewrite vect_retr.
   apply Equiv_id.
 Defined. 
+
+Definition IsFun_vect_bis_sym {A A':Type} (RA : A ≈ A') :
+     forall n m Xn, IsFun (sym (Rel_vect_bis RA n m Xn)).
+Proof.
+  intros n m Xn v'.
+  eapply contr_equiv2; [ idtac | apply (IsFunFSym RA n m Xn (vect_to_forded v')) ].
+  unfold Rel_vect_bis, FR_vect_bis. unfold Rel_vectF.
+  unshelve eapply EquivSigmaGen. intro v. cbn. rewrite vect_retr.
+  apply Equiv_id.
+Defined. 
+
+#[export] Hint Extern 0 (IsFun _ ) =>
+  apply IsFun_vect_bis: typeclass_instances.
+
+#[export] Hint Extern 0 (IsFun _ ) =>
+  apply IsFun_vect_bis_sym: typeclass_instances.
+
+Definition _FP_vect_bis : @vect ≈ @vect.
+  intros A A' eA n m Xn. FP.
+Defined.
+
+Print _FP_vect_bis.
+
+Instance FP_vect_bis (A A' : Type) (eA : A ≈ A')
+  (n m : nat) (Xn : n ≈ m) :
+  vect A n ⋈ vect A' m := _FP_vect_bis A A' eA n m Xn.
+
   
