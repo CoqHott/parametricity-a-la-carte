@@ -599,14 +599,15 @@ Fixpoint FRvect_retr {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
   forall {m:nat} (v':vect A' m) Xn XFv,  FRvect_to_FRvectF RA v v' Xn (FRvectF_to_FRvect RA v v' Xn XFv) = XFv.
 Proof.
   unfold Rel_vect_bis, FR_vect_bis, Rel_vect.
-  induction v; intros m v' Xn; destruct v'; intro Xv; try auto; try reflexivity.
-  - destruct Xn; cbn in *. eapply path_contr.
+  induction v; intros m v' Xn; destruct v'; intro Xv; try reflexivity.
+  - destruct Xn. cbn in *. unshelve eapply path_contr.
+    unfold rel, Rel_eq. cbn. apply contr_paths_contr. apply IsContr_unit.
   - destruct Xv as [Xn' [Xeq [Xa Xv]]]. 
     unfold rel, Rel_eq in Xeq; cbn in Xeq; unfold FR_S in Xeq; destruct Xeq.
     cbn.
     simple eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
     simple eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
     simple eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
-    unshelve eapply FRvect_retr.
-Admitted.
+    simple eapply (FRvect_retr A A' RA n v n0 v' Xn').
+Defined.
 
