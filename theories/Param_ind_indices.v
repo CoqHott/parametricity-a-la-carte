@@ -559,16 +559,15 @@ Definition _FP_vect_bis : @vect ≈ @vect.
   intros A A' eA n m Xn. FP.
 Defined.
 
-Print _FP_vect_bis.
-
 Instance FP_vect_bis (A A' : Type) (eA : A ≈ A')
   (n m : nat) (Xn : n ≈ m) :
   vect A n ⋈ vect A' m := _FP_vect_bis A A' eA n m Xn.
 
   
-(* proof that the lifting preserve relation *)
+  
+(*** proof that the lifting preserve relation ***)
 Definition FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
-  forall m v' Xn,  Rel_vect RA n m Xn v v' -> Rel_vect_bis RA n m Xn v v'.
+  forall {m} v' Xn,  Rel_vect RA n m Xn v v' -> Rel_vect_bis RA n m Xn v v'.
 Proof.
   induction v; intros m v' Xn; destruct v'; cbn; intro Xv; try auto.
   - contr_refl. 
@@ -576,3 +575,35 @@ Proof.
     exists (IHv n0 v' Xn Xv). contr_refl. 
 Defined.
 
+Definition FRvectF_to_FRvect {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
+  forall {m:nat} v' Xn,  Rel_vect_bis RA n m Xn v v' -> Rel_vect RA n m Xn v v'. 
+Proof.
+  unfold Rel_vect_bis, FR_vect_bis, Rel_vect.
+  induction v; intros m v' Xn; destruct v'; cbn; intro Xv; try auto.
+  destruct Xv as [Xn' [Xa [Xv Xeq]]].
+  unfold rel, Rel_eq in Xeq; cbn in Xeq; unfold FR_S in Xeq; destruct Xeq.
+  exists Xa. exact (IHv n0 v' Xn' Xv).
+Defined.
+
+Definition FRvect_sect {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
+  forall {m:nat} (v':vect A' m) Xn Xv,  FRvectF_to_FRvect RA v v' Xn (FRvect_to_FRvectF RA v v' Xn Xv) = Xv.
+Proof.
+  induction v; intros m v' Xn; destruct v'; intro Xv; try auto; try reflexivity.
+  - destruct Xn, Xv; reflexivity.
+  - destruct Xv as [Xa Xv]. 
+    apply path_sigma_uncurried; unshelve econstructor.
+    reflexivity. unfold transport_eq. admit.
+Admitted.
+
+Definition FRvect_retr {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
+  forall {m:nat} (v':vect A' m) Xn XFv,  FRvect_to_FRvectF RA v v' Xn (FRvectF_to_FRvect RA v v' Xn XFv) = XFv.
+Proof.
+  unfold Rel_vect_bis, FR_vect_bis, Rel_vect.
+  induction v; intros m v' Xn; destruct v'; intro Xv; try auto; try reflexivity.
+  - destruct Xn; cbn. eapply path_contr.
+  - destruct Xv as [Xn' [Xa [Xv Xeq]]].
+    unfold rel, Rel_eq in Xeq; cbn in Xeq; unfold FR_S in Xeq; destruct Xeq.
+    apply path_sigma_uncurried; unshelve econstructor. cbn. reflexivity. unfold transport_eq.
+    apply path_sigma_uncurried; unshelve econstructor. cbn. reflexivity. unfold transport_eq.
+    admit.
+Admitted. 
