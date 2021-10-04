@@ -586,26 +586,29 @@ Proof.
   exists Xa. eapply FRvectF_to_FRvect. exact Xv.
 Defined.
 
-Definition FRvect_sect {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
+Fixpoint FRvect_sect {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
   forall {m:nat} (v':vect A' m) Xn Xv, FRvectF_to_FRvect RA v v' Xn (FRvect_to_FRvectF RA v v' Xn Xv) = Xv.
 Proof.
-  induction v; intros m v' Xn; destruct v'; intro Xv; try easy.
-  - cbn in *. destruct Xn, Xv; reflexivity.
-  - destruct Xv as [Xa Xv]. 
-    apply path_sigma_uncurried; unshelve econstructor.
-    reflexivity. unfold transport_eq.
-    admit.
-Admitted.
+  induction v; intros m v' Xn; destruct v'; intro Xv; cbn; try contradiction.
+  - destruct Xn, Xv; reflexivity.
+  - destruct Xv as [Xa Xv].
+    apply path_sigma_uncurried; unshelve econstructor; cbn.
+    reflexivity; cbn. apply FRvect_sect.
+Defined.
 
-Definition FRvect_retr {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
+Fixpoint FRvect_retr {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
   forall {m:nat} (v':vect A' m) Xn XFv,  FRvect_to_FRvectF RA v v' Xn (FRvectF_to_FRvect RA v v' Xn XFv) = XFv.
 Proof.
   unfold Rel_vect_bis, FR_vect_bis, Rel_vect.
   induction v; intros m v' Xn; destruct v'; intro Xv; try auto; try reflexivity.
   - destruct Xn; cbn in *. eapply path_contr.
-  - destruct Xv as [Xn' [Xa [Xv Xeq]]].
+  - destruct Xv as [Xn' [Xa [Xv Xeq]]]. 
     unfold rel, Rel_eq in Xeq; cbn in Xeq; unfold FR_S in Xeq; destruct Xeq.
-    apply path_sigma_uncurried; unshelve econstructor. easy. unfold transport_eq.
-    apply path_sigma_uncurried; unshelve econstructor. easy. unfold transport_eq.
+    cbn.
+    apply path_sigma_uncurried; unshelve econstructor. easy. cbn.
+    apply path_sigma_uncurried; unshelve econstructor. easy. cbn.
+    apply path_sigma_uncurried; unshelve econstructor. cbn. apply FRvect_retr.
+    cbn. contr_refl.
     admit.
-Admitted. 
+Admitted.
+
