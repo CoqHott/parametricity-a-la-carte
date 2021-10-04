@@ -326,7 +326,7 @@ Instance FP_eq (A A' : Type) (eA : A ⋈ A')
 
 Inductive vectF (A:Type) (n : nat) : Type :=
   |nilF : 0 = n -> vectF A n
-  |consF : forall m:nat, A -> vectF A m -> S m = n -> vectF A n.
+  |consF : forall m:nat, S m = n -> A -> vectF A m -> vectF A n.
 
 Arguments nilF {_ _} _.
 Arguments consF {_ _} _ _ _ _.
@@ -336,9 +336,9 @@ Fixpoint FRvectF {A A':Type} (RA : A ≈ A')
   : forall  (v' : vectF A' m) , Type :=
   fun v' => match v , v' with
   | nilF e , nilF e' => e ≈ e'
-  | consF m a v e , consF m' a' v' e' => 
-    {Rm : FR_nat m m' & { _ : (_R RA) a a' &
-    { _ : FRvectF RA _ _  Rm v v' & e ≈ e' }}}
+  | consF m e a v , consF m' e' a' v' => 
+    {Rm : FR_nat m m' & {_ : e ≈ e' &  { _ : (_R RA) a a' &
+     FRvectF RA _ _ Rm v v' }}}
   | _ , _ => empty
   end.
 
@@ -351,9 +351,9 @@ Definition codeF_arg {A A' : Type} (RA : A ≈ A')
   :=
     match v with
       nilF e => { e' : O = m & nilF e ≈ nilF e' }
-    | consF n' a v e =>
-      {m' : nat & { a':A' &  {v':vectF A' m' & { e' : S m' = m &
-      consF n' a v e ≈ consF m' a' v' e'}}}}
+    | consF n' e a v =>
+      {m' : nat & {e' : S m' = m & { a':A' &  {v':vectF A' m' & 
+      consF n' e a v ≈ consF m' e' a' v'}}}}
     end.
 
 Definition EquivVectF_arg {A A' : Type} (RA : A ≈ A')
@@ -366,14 +366,14 @@ Proof.
   - exact (fun lr =>
         match lr with
         | (nilF e0 ; r) => (e0 ; r)
-        | (consF m a e v ; r) => match r with end
+        | (consF m e a v ; r) => match r with end
         end). 
   - unshelve econstructor. 
       -- exact (fun lr => match lr with (e0 ; r) => (nilF e0 ; r) end).
       -- exact (fun lr =>
                   match lr with
                   | (nilF e0 ; r) => eq_refl
-                  | (consF m' a' e' v' ; r) => match r with end
+                  | (consF m' e' a' v' ; r) => match r with end
                   end). 
       -- exact (fun lr => match lr with (e0 ; r) => eq_refl end).
       -- intros [v' r]. destruct v'; try destruct r; cbn;  reflexivity. 
@@ -381,21 +381,21 @@ Proof.
   - exact (fun lr =>
         match lr with
         | (nilF e0 ; r) => match r with end 
-        | (consF m' a' v' e' ; r) => (m' ; ( a' ; (v' ; (e' ; r)))) 
+        | (consF m' e' a' v' ; r) => (m' ; ( e' ; (a' ; (v' ; r)))) 
         end).
     - unshelve econstructor; cbn. 
       -- exact (fun lr =>
                   match lr with
-                  | (m' ; ( a' ; (v' ; (e' ; r)))) => (consF m' a' v' e' ; r)
+                  | (m' ; ( e' ; (a' ; (v' ; r)))) => (consF m' e' a' v' ; r)
                   end). 
       -- exact (fun lr =>
                   match lr with
                   | (nilF e0 ; r) => match r with end 
-                  | (consF m' a' e' v' ; r) => eq_refl
+                  | (consF m' e' a' v' ; r) => eq_refl
                   end). 
       -- exact (fun lr =>
                   match lr with
-                  | (m' ; ( a' ; (v' ; (e' ; r)))) => eq_refl
+                  | (m' ; ( e' ; (a' ; (v' ; r)))) => eq_refl
                   end).
       -- intros [v' r]. destruct v'; try destruct r; reflexivity. 
  Defined.
@@ -405,8 +405,6 @@ Proof.
 
 #[export] Hint Extern 0 (IsContr { _ : nat & _})  =>
   apply IsFun_sym_nat: typeclass_instances.
-
-
 
 Instance IsFunF {A A' : Type} (RA : A ≈ A') :
   forall n m Xn, IsFun (Rel_vectF RA n m Xn).
@@ -421,9 +419,9 @@ Definition codeF_arg_sym {A A' : Type} (RA : A ≈ A')
   :=
     match v with
       nilF e' => { e : O = n & nilF e ≈ nilF e' }
-    | consF m' a' v' e' =>
-      {n' : nat & { a:A & {v:vectF A n' & { e : S n' = n &
-      consF n' a v e ≈ consF m' a' v' e'}}}}
+    | consF m' e' a' v' =>
+      {n' : nat & { e : S n' = n & { a:A & {v:vectF A n' & 
+      consF n' e a v ≈ consF m' e' a' v'}}}}
     end.
 
 Definition EquivVectF_argSym {A A' : Type} (RA : A ≈ A')
@@ -440,12 +438,12 @@ Proof.
       -- intros [v' r]; destruct v'; try destruct r; try reflexivity. 
       -- intros [e' r]. reflexivity.
   * unshelve econstructor.
-    - intros [v' r ]; destruct v' as [ e' | m' a' v' e'] ; try solve [destruct r]; cbn.
-      exists m', a', v' , e'. exact r.
+    - intros [v' r ]; destruct v' as [ e' | m' e' a' v'] ; try solve [destruct r]; cbn.
+      exists m', e', a', v'. exact r.
     - unshelve eapply isequiv_adjointify; cbn. 
-      -- intros [m' [ a' [ v' [e' r]]]]. exists (consF m' a' v' e'). exact r.
+      -- intros [m' [ e' [ a' [v' r]]]]. exists (consF m' e' a' v'). exact r.
       -- intros [v' r]; destruct v'; try destruct r; try reflexivity.
-      -- intros [m' [ a' [ v' [e' r]]]]. reflexivity.
+      -- intros [m' [ e' [ a' [v' r]]]]. reflexivity.
 Defined.
 
 Instance IsFunFSym {A A':Type} (RA : A ≈ A') :
@@ -482,7 +480,7 @@ Fixpoint vect_to_forded {A:Type} {n:nat} (v : vect A n) : vectF A n.
 Proof.
   destruct v.
   exact (nilF eq_refl).
-  exact (consF n a (vect_to_forded A n v) eq_refl).
+  exact (consF n eq_refl a (vect_to_forded A n v)).
 Defined.
 
 Fixpoint forded_to_vect {A:Type} {n:nat} (vF : vectF A n) : vect A n.
@@ -505,7 +503,7 @@ Fixpoint vect_retr {A:Type} {n:nat} (vF : vectF A n) :
 Proof.
   destruct vF; destruct e; cbn. 
   - reflexivity. 
-  - apply (ap (fun vF => consF m a vF eq_refl)). apply vect_retr.
+  - apply (ap (fun vF => consF m eq_refl a vF)). apply vect_retr.
 Defined.
 
 Instance vectF_vect {A:Type} {n : nat} : vectF A n ≃ vect A n.
@@ -571,9 +569,10 @@ Fixpoint FRvect_to_FRvectF {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) 
 Proof.
   induction v; intros m v' Xn; destruct v'; cbn; intro Xv; try auto.
   - contr_refl. 
-  - destruct Xv as [Xa Xv]. exists Xn, Xa.
-    unshelve econstructor. eapply FRvect_to_FRvectF.
-    exact Xv. contr_refl. 
+  - destruct Xv as [Xa Xv]. exists Xn. 
+    unshelve econstructor. contr_refl.
+    exists Xa. eapply FRvect_to_FRvectF.
+    exact Xv. 
 Defined.
 
 Fixpoint FRvectF_to_FRvect {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
@@ -581,7 +580,7 @@ Fixpoint FRvectF_to_FRvect {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) 
 Proof.
   unfold Rel_vect_bis, FR_vect_bis, Rel_vect.
   induction v; intros m v' Xn; destruct v'; cbn; intro Xv; try auto.
-  destruct Xv as [Xn' [Xa [Xv Xeq]]].
+  destruct Xv as [Xn' [Xeq [Xa Xv]]].
   unfold rel, Rel_eq in Xeq; cbn in Xeq; unfold FR_S in Xeq; destruct Xeq.
   exists Xa. eapply FRvectF_to_FRvect. exact Xv.
 Defined.
@@ -593,7 +592,7 @@ Proof.
   - destruct Xn, Xv; reflexivity.
   - destruct Xv as [Xa Xv].
     apply path_sigma_uncurried; unshelve econstructor; cbn.
-    reflexivity; cbn. apply FRvect_sect.
+    reflexivity. cbn. apply FRvect_sect.
 Defined.
 
 Fixpoint FRvect_retr {A A':Type} (RA : A ≈ A') {n : nat} (v : vect A n) :
@@ -602,13 +601,12 @@ Proof.
   unfold Rel_vect_bis, FR_vect_bis, Rel_vect.
   induction v; intros m v' Xn; destruct v'; intro Xv; try auto; try reflexivity.
   - destruct Xn; cbn in *. eapply path_contr.
-  - destruct Xv as [Xn' [Xa [Xv Xeq]]]. 
+  - destruct Xv as [Xn' [Xeq [Xa Xv]]]. 
     unfold rel, Rel_eq in Xeq; cbn in Xeq; unfold FR_S in Xeq; destruct Xeq.
     cbn.
-    apply path_sigma_uncurried; unshelve econstructor. easy. cbn.
-    apply path_sigma_uncurried; unshelve econstructor. easy. cbn.
-    apply path_sigma_uncurried; unshelve econstructor. cbn. apply FRvect_retr.
-    cbn. contr_refl.
-    admit.
+    eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
+    eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
+    eapply path_sigma_uncurried; unshelve econstructor. easy. cbn.
+    eapply FRvect_retr.
 Admitted.
 
