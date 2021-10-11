@@ -54,7 +54,7 @@ Defined.
 
 (* for minor differences between Prop and Type (coming from impredicativity)  *)
 (* we need to state again univalence for Prop, even if in principle Prop is  *)
-(* a subtype iof Type *)
+(* a subtype of Type *)
 
 Definition Equiv_id_P (A:Prop) : A ≃ A := 
   BuildEquiv _ _ id (BuildIsEquiv _ _ _ id (fun _ => eq_refl) (fun _ => eq_refl) (fun _ => eq_refl)).
@@ -177,7 +177,7 @@ Definition contr_equiv2 (A B : Type) (H : Equiv A B) : (IsContr A) -> (IsContr B
 Proof. 
   destruct H. destruct e_isequiv. intros [x P]. econstructor. intro b. 
   exact ((ap e_fun (P (e_inv b))) @ (e_retr b)).
-Qed.
+Defined.
 
 Definition ap_inv_equiv {A B} (f : A -> B) `{IsEquiv _ _ f} x y : f x = f y -> x = y.
 Proof.

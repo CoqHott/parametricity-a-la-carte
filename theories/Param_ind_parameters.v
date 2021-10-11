@@ -6,9 +6,7 @@ From Coq Require Import ssreflect.
 
 Set Universe Polymorphism.
 
-
-
-
+Unset Universe Minimization ToSet.
 
 (* ########################################################### *)
 (* ###        Parametricity for Inductive Types            ### *)
@@ -470,6 +468,8 @@ Defined.
 Instance FP_list (A A' : Type) (eA : A ≈ A') : list A ⋈ list A'
   := _FP_list A A' eA. 
 
+#[export] Hint Extern 0 (list ?A ≈ list ?A') => refine (FP_list _ _ _) : typeclass_instances.
+
 Definition FP_nil : @nil ≈ @nil := fun A A' eA => tt.
 
 #[export] Hint Extern 0 (nil ≈ nil) => refine (FP_nil _ _ _) : typeclass_instances.
@@ -514,21 +514,15 @@ Definition code_tree_arg {A A' : Type} (RA : A ≈ A') (t : tree A) : Type :=
 Definition Equiv_tree_arg {A A' : Type} (RA : A ≈ A') (t : tree A) : 
       Equiv ({t' : tree A' & t ≈ t'}) (code_tree_arg RA t).
 Proof.
-  destruct t as [ | ls a rs]; cbn.
-  * unshelve econstructor.
-    - intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r.
-      exact tt.
-    - unshelve eapply isequiv_adjointify.
-      -- intro r. exists nil_tree. exact r.
-      -- rdestruct; reflexivity. 
-      -- rdestruct; reflexivity. 
-  * unshelve econstructor.
-  - intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r.
-    exists ls', a', rs', x. exact s.
-  - unshelve eapply isequiv_adjointify.
-    -- intros [ls' [a' [rs' r]]]. exists (cons_tree ls' a' rs'). exact r.
-    -- rdestruct; reflexivity. 
-    -- rdestruct; reflexivity. 
+  unshelve econstructor; 
+    [idtac | unshelve eapply isequiv_adjointify] ; destruct t as [ | ls a rs].
+  { intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r.
+    exact tt. }
+  { intros [t' r]. destruct t' as [ | ls' a' rs']; try destruct r.
+    exists ls', a', rs', x. exact s. }
+  { intro r. exists nil_tree. exact r. }
+  { intros [ls' [a' [rs' r]]]. exists (cons_tree ls' a' rs'). exact r. }
+  all: rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_tree {A A' : Type} (RA : A ≈ A') : IsFun (FR_tree RA).
@@ -627,12 +621,11 @@ Definition Equiv_sigma_arg {A A':Type} {B : A -> Type} {B' : A' -> Type}
 Proof.
   destruct x as [a b]; unfold code_sigma_arg.
   unshelve econstructor.
-  - intros [y r]. destruct y as [a' b']; try destruct r.
-    exists a', b', x. exact r.
-  - unshelve eapply isequiv_adjointify.
-    -- intros [a' [b' r]]. exists (a';b'). exact r.
-    -- rdestruct; reflexivity. 
-    -- rdestruct; reflexivity. 
+  { intros [y r]. destruct y as [a' b'].  
+    exact (a';(b';r)). }
+  unshelve eapply isequiv_adjointify.
+  { intros [a' [b' r]]. exact ((a';b');r). }
+  all: rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 
@@ -665,12 +658,11 @@ Definition Equiv_sigma_arg_sym {A A':Type} {B : A -> Type} {B' : A' -> Type}
 Proof.
   destruct x as [a b]; unfold code_sigma_arg.
   unshelve econstructor.
-  - intros [y r]. destruct y as [a' b']; try destruct r.
-    exists a', b', x. exact r.
-  - unshelve eapply isequiv_adjointify.
-    -- intros [a' [b' r]]. exists (a';b'). exact r.
-    -- rdestruct; reflexivity. 
-    -- rdestruct; reflexivity. 
+  { intros [y r]. destruct y as [a' b'].  
+    exact (a';(b';r)). }
+  unshelve eapply isequiv_adjointify.
+  { intros [a' [b' r]]. exact ((a';b');r). }
+  all: rdestruct; reflexivity. 
 Defined.
 
 Instance IsFun_sym_sigma {A A'} {B : A -> Type} {B' : A' -> Type} 

@@ -4,6 +4,8 @@ From Coq Require Import ssreflect.
 
 Set Universe Polymorphism.
 
+Unset Universe Minimization ToSet.
+
 (* ----- Definition and properties ----- *)
 
 Class Rel A B := rel : A -> B -> Type.
@@ -214,4 +216,6 @@ Proof.
   exact (BuildEquiv _ _ (Fun A B) (IsEquiv_Equiv_Equiv_FR_Type)).
 Defined.
 
+Definition toFun {A B} {e : A ⋈ B} : A -> B := funR _.
 
+Notation "↑" := toFun (at level 65, only parsing).

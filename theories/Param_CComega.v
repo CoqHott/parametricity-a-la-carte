@@ -6,6 +6,7 @@ From Coq Require Import ssreflect.
 
 Set Universe Polymorphism.
 
+Unset Universe Minimization ToSet.
 
 (* ########################################################### *)
 (* ###               Parametricity for CCω                 ### *)
@@ -19,28 +20,23 @@ Set Universe Polymorphism.
 (* ###                      Type ⋈ Type                   ### *)
 (* ########################################################### *)
 
-Set Printing Universes.
-
 Instance FR_Type_def : Rel Type Type := FR_Type.
 
 Instance FP_Type : Type ⋈ Type.
 Proof.
   econstructor. unfold rel. unshelve econstructor => [A|B].
-  all: unfold sym, FR_Type_def.
   + eapply (contr_equiv2 {B:Type & A = B}). 2: apply IsContrSingleton_r.
     apply EquivSigma; intro B. apply (@equiv_compose _ (Equiv A B) _).
     apply Univ. apply Equiv_Equiv_FR_Type.
   + eapply (contr_equiv2 {A:Type & A = B}). 2: apply IsContrSingleton_l.
-  apply EquivSigma; intro A. apply (@equiv_compose _ (Equiv A B) _).
-  apply Univ. apply Equiv_Equiv_FR_Type.
+    apply EquivSigma; intro A. apply (@equiv_compose _ (Equiv A B) _).
+    apply Univ. apply Equiv_Equiv_FR_Type.
 Defined.
 
-
-
-
+Check (eq_refl : ↑ nat = nat).
 
 (* ########################################################### *)
-(* ###                 Π(a:A) B ⋈ Π(a':A') B'             ### *)
+(* ###                 Π(a:A) B ⋈ Π(a':A') B'              ### *)
 (* ########################################################### *)
 
 Definition FR_Forall {A A'} {B : A -> Type} {B' : A' -> Type} (RA : Rel A A')
