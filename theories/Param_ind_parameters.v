@@ -14,6 +14,7 @@ Unset Universe Minimization ToSet.
 
 (** Generic Lemma to prove contractibility of telescope **)
 
+(*
 Definition IsContr_telescope2 {A} {P RA : A -> Type}
            {RP : forall a, RA a -> P a -> Type}
   : IsContr {a:A & RA a} ->
@@ -106,6 +107,7 @@ Proof.
   cbn. apply IsContrSigma_codomain. intro Ha.
   apply IsContr_telescope4; auto.  
 Defined.
+*)
 
 Ltac erefine f  := first [ refine f | refine (f _) | refine (f _ _) | refine (f _ _ _) | refine (f _ _ _ _) | refine (f _ _ _ _ _) | refine (f _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _ _ _) | refine (f _ _ _ _ _ _ _ _ _ _ _ _)  ].
 
@@ -113,18 +115,20 @@ Ltac eapply_assumption := match goal with | H : _ |- _ => eapply H end.
 
 Ltac isFun f :=
   eapply contr_equiv2 ; try (apply Equiv_inverse; erefine f);
-  try first [ eapply IsContr_telescope5 |
-              eapply IsContr_telescope4 |
-              eapply IsContr_telescope3 |
-              eapply IsContr_telescope2 |
-              idtac 
-             ];
+  (* try first [ eapply IsContr_telescope5 | *)
+  (*             eapply IsContr_telescope4 | *)
+  (*             eapply IsContr_telescope3 | *)
+  (*             eapply IsContr_telescope2 | *)
+  (*             idtac  *)
+  (*            ]; *)
   try first [
         intros; eapply_assumption |
         cbn; typeclasses eauto ].
 
+
 Ltac FP :=
    unshelve econstructor; split ; typeclasses eauto.
+ 
 
 Ltac rdestruct_ l :=
   let x := fresh "x" in let y := fresh "y" in 
@@ -146,11 +150,11 @@ Ltac rdestruct := repeat (let l := fresh "l" in intro l ; rdestruct_ l).
 (* ###                     nat ⋈ nat                       ###*)
 (* ###########################################################*)
 
-Fixpoint FR_nat (n m : nat) : Type :=
+Fixpoint FR_nat (n m : nat) : SProp :=
   match n , m with
-    | 0 , 0 => unit
+    | 0 , 0 => STrue
     | S n , S m => FR_nat n m
-    | _ , _ => empty
+    | _ , _ => SFalse
   end.
 
 Instance Rel_nat : Rel nat nat := FR_nat. 
@@ -158,7 +162,7 @@ Instance Rel_nat : Rel nat nat := FR_nat.
 Definition code_nat_arg (n : nat) : 
   Type :=
   match n with
-    0 => FR_nat 0 0
+    0 => Box (FR_nat 0 0)
   | S n => {m : nat & FR_nat (S n) (S m)}
   end. 
 
@@ -167,18 +171,18 @@ Definition Equiv_nat_arg (n : nat) :
 Proof.
   destruct n as [ | n ]; unshelve econstructor ; cbn. 
   - exact (fun lr => match lr with
-                         ( 0 ; r ) => tt
+                         ( 0 ; r ) => box SI
                        | ( S m ; r ) => match r with end  
                        end).
   - exact (fun lr => match lr with
                          ( 0 ; r ) => match r with end 
                        | ( S m ; r ) => (m ; r)
                        end).
-  - unshelve eapply isequiv_adjointify.
-    -- exact (fun r => (0 ; r)).
+  - unshelve econstructor.
+    -- exact (fun r => (0 ; unbox r)).
     -- rdestruct; reflexivity. 
     -- rdestruct; reflexivity. 
-  - unshelve eapply isequiv_adjointify.
+  - unshelve econstructor.
     -- intros [m r]. exact (S m ; r ).
     -- rdestruct; reflexivity. 
     -- rdestruct; reflexivity. 
@@ -192,7 +196,7 @@ Defined.
 Definition code_nat_arg_sym (n : nat) : 
   Type :=
   match n with
-    0 => FR_nat 0 0
+    0 => Box (FR_nat 0 0)
   | S n => {m : nat & FR_nat (S m) (S n)}
   end.
 
@@ -201,18 +205,18 @@ Definition Equiv_nat_arg_sym (m : nat) :
 Proof.
   destruct m as [ | m ]; unshelve econstructor ; cbn. 
   - exact (fun lr => match lr with
-                         ( 0 ; r ) => tt
+                         ( 0 ; r ) => box SI
                        | ( S m ; r ) => match r with end  
                        end).
   - exact (fun lr => match lr with
                          ( 0 ; r ) => match r with end 
                        | ( S n ; r ) => (n ; r)
                        end).
-  - unshelve eapply isequiv_adjointify.
-    -- exact (fun r => (0 ; r)).
+  - unshelve econstructor.
+    -- exact (fun r => (0 ; unbox r)).
     -- rdestruct; reflexivity. 
     -- rdestruct; reflexivity. 
-  - unshelve eapply isequiv_adjointify.
+  - unshelve econstructor.
     -- intros [n r]. exact (S n ; r ).
     -- rdestruct; reflexivity. 
     -- rdestruct; reflexivity. 
@@ -223,14 +227,14 @@ Proof.
   intro n; induction n; isFun @Equiv_nat_arg_sym.
 Defined.
   
-Definition FP_nat : nat ≈ nat.
+Definition FP_nat : nat ⋈ nat.
   FP. 
 Defined.
 
 #[export] Hint Extern 0 (nat ≈ nat) => exact FP_nat : typeclass_instances.
 #[export] Hint Extern 0 (nat ⋈ nat) => exact FP_nat : typeclass_instances.
 
-Definition FR_0 : 0 ≈ 0 := tt. 
+Definition FR_0 : 0 ≈ 0 := SI. 
 
 #[export] Hint Extern 0 (0 ≈ 0) => exact FR_0 : typeclass_instances.
 
@@ -240,6 +244,14 @@ Definition FR_S : S ≈ S := fun n m e => e.
 
 #[export] Hint Extern 0 (?a _ ⋈ ?a' _) => match goal with | H : _ |- _ => unshelve eapply H end : typeclass_instances.
 
+Goal (forall P : Type, P -> (forall n : nat, P -> P ) -> forall n : nat, P)
+     ⋈
+     forall P : Type, P -> (forall n : nat, P -> P ) -> forall n : nat, P .
+  unshelve refine (FP_forall _ _ _ _ _ _) ; intros .
+  unshelve refine (FP_forall _ _ _ _ _ _) ; intros .
+  typeclasses eauto. admit. 
+  unshelve refine (FP_forall _ _ _ _ _ _) ; intros .
+  cbn in H. unfold FR_Forall in H. unfold rel in H. typeclasses eauto.
 Definition FR_nat_rect : @nat_rect ≈ @nat_rect. 
 Proof.
   intros P Q HPQ P0 Q0 H0 PS QS HS n.

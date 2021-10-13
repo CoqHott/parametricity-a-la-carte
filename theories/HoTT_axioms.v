@@ -4,67 +4,22 @@ Set Universe Polymorphism.
 Set Primitive Projections.
 
 
-Definition eq_to_equiv A B : A = B -> A ≃ B :=
-  fun e => e # (Equiv_id A).
+Definition Funext := forall (A : Type) (P : A -> Type)
+                            (f g : forall a:A, P a), f == g -> f = g. 
 
-Definition Funext := forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g).
+Definition Propext := forall (P Q : SProp), P <-> Q -> P = Q. 
 
-(* The frawework relies on the univalence axiom and functional extensionality *)
+(* The frawework relies on functional extensionality *)
 
-Axiom univalence : forall A B, IsEquiv (eq_to_equiv A B).
 Axiom funext : Funext. 
+Axiom propext : Propext.
 
-Definition Fune {A : Type} {P : A-> Type} (f g : forall x:A, P x) :
-  Equiv (f == g ) (f = g).
-Proof.
-  apply Equiv_inverse. unshelve econstructor.
-  exact apD10. apply funext.
-Defined.
-
-Definition Univ {A B : Type} : Equiv (A = B) (Equiv A B).
-Proof.
-  unshelve econstructor. apply eq_to_equiv. apply univalence.
+Definition Fune : forall (A : Type) (P : A -> Type)
+                         (f g : forall a:A, P a), f == g <-> f = g.
+  intros; split. apply funext. apply apD10.
 Defined. 
 
-Instance funext_isequiv A P (f g : forall x : A, P x) : IsEquiv (@apD10 _ _ f g) := funext _ _ _ _.
-
-Instance univalence_isequiv A B : IsEquiv (eq_to_equiv A B) := univalence _ _.
-
-Definition transport_apD10 A B (f g : forall x:A, B x)
-           (P : forall x:A, B x -> Type)
-           (e : f = g) x v: transport_eq (fun X => P x (X x))
-                                                       e v
-                                          = transport_eq (fun X => P x X)
-                                                (apD10 e x) v.
-  destruct e. reflexivity.
-Defined. 
-
-
-Definition transport_funext {A B} {f g : forall x:A, B x}
-           (P : forall x:A, B x -> Type) x 
-           (v : P x (f x)) (e : forall x, f x = g x)
-            : transport_eq (fun X => P x (X x))
-                                                       (e_inv apD10 e) v
-                                          = transport_eq (fun X => P x X)
-                                                (e x) v.
-Proof.
-  rewrite transport_apD10. rewrite e_retr. reflexivity.
-Defined.
-
-
-(* for minor differences between Prop and Type (coming from impredicativity)  *)
-(* we need to state again univalence for Prop, even if in principle Prop is  *)
-(* a subtype of Type *)
-
-Definition Equiv_id_P (A:Prop) : A ≃ A := 
-  BuildEquiv _ _ id (BuildIsEquiv _ _ _ id (fun _ => eq_refl) (fun _ => eq_refl) (fun _ => eq_refl)).
-
-Definition eq_to_equiv_P (A B:Prop) : A = B -> A ≃ B :=
-  fun e => @transport_eq Prop (fun X => A ≃ X) A B e (Equiv_id_P A).
-             
-Axiom univalence_P : forall (A B:Prop), IsEquiv (eq_to_equiv_P A B).
-
-
+(*
 Definition transport_sigma_1 A (P : A -> Type) Q x y (e : x = y) X :
   (transport_eq (fun x => {y : P x & Q x y}) e X).1  =
   transport_eq P e X.1.
@@ -80,16 +35,16 @@ Proof.
   rewrite <- transport_funext.
   generalize (e_inv apD10 e). destruct e0. reflexivity.
 Defined. 
-
+*)
 
 (*** IsContr ***)
 
 Definition IsContr (A:Type) := { x : A & forall y, x = y}.
 Existing Class IsContr. 
 
-Fixpoint IsTrunc n A := match n with
+Fixpoint IsTrunc n A : Type := match n with
                            | O => IsContr A
-                           | S n => forall x y:A, IsTrunc n (x = y)
+                           | S n => forall x y:A, IsTrunc n (Box (x = y))
                            end.
 
 Definition IsHProp A := IsTrunc 1 A.
@@ -104,18 +59,10 @@ Admitted.
 Definition path_contr {A} `{IsContrA : IsContr A} (x y : A) : x = y
   := let contr := IsContrA.2 in (contr x)^ @ (contr y).
 
-Definition path2_contr {A} `{IsContr A} {x y : A} (p q : x = y) : p = q.
-Proof.
-  assert (K : forall (r : x = y), r = path_contr x y).
-  intro r; destruct r. unfold path_contr.
-  symmetry. apply concat_Vp.
-  transitivity (path_contr x y). apply K. symmetry; apply K. 
-Defined.
-
-Definition contr_paths_contr A `{IsContr A} (x y : A) : IsContr (x = y).
+Definition contr_paths_contr A `{IsContr A} (x y : A) : IsContr (Box (x = y)).
   unshelve econstructor.
-  exact (path_contr x y).
-  exact (path2_contr _).
+  exact (box (path_contr x y)).
+  intros []. reflexivity. 
 Defined.
 
 (* begin proof irrelevant is the same as IsHprop *)
@@ -123,15 +70,15 @@ Defined.
 Definition IsIrr A := forall x y : A, x = y. 
 
 Definition IsIrr_inhab_IsContr A (H: IsIrr A) : A -> IsContr A :=
-  fun x => existT _ x (H x).
+  fun x => existP _ x (H x).
   
 Definition IsHProp_to_IsIrr A : IsHProp A -> IsIrr A :=
-  fun H x y => (H x y).1. 
+  fun H x y => match (H x y).1 with box e => e end. 
 
 Definition IsIrr_to_IsHProp A : IsIrr A -> IsHProp A.
   unshelve econstructor.
-  apply X.
-  intro e. unshelve eapply path2_contr. apply IsIrr_inhab_IsContr; auto.
+  apply (box (H _ _)).
+  intros []; reflexivity. 
 Defined. 
     
 Definition IsHProp_inhab_isContr A {H:A -> IsContr A} : IsHProp A.
@@ -158,8 +105,9 @@ Proof.
 Defined.
 
 Definition IsHPropIsContr {A} : IsHProp (IsContr A).
-Admitted. 
-
+  apply IsIrr_to_IsHProp. intros [x p] [y q]. apply path_sigma_uncurried.
+  exact (p _).
+Defined. 
 
 (* Preservation of homotopy level *)
 
@@ -189,21 +137,6 @@ Proof.
   intro X. exact ((e_retr f x)^@ ap f X @ e_retr f y).
 Defined.
 
-Axiom admit : forall X, X.
-Ltac cheat := apply admit.
-
-Instance isequiv_ap A B {x y : A} (f:A->B) {H:IsEquiv f}
-  : IsEquiv (@ap _ _ f x y).
-Proof. 
-  unshelve econstructor; cbn. 
-  - apply ap_inv_equiv. auto. 
-  - intro e. destruct e. unfold ap_inv_equiv. cbn. rewrite concat_refl.
-    apply concat_Vp.
-  - cheat.
-  - cheat. 
-Defined. 
-
-
 Definition trunc_equiv n A B (f : A -> B)
   `{IsTrunc n A} `{IsEquiv A B f}
   : IsTrunc n B.
@@ -211,11 +144,36 @@ Proof.
   generalize dependent B; generalize dependent A.
   induction n; cbn ; intros.
   - apply (contr_equiv A B f).
-  - unshelve eapply (IHn ((e_inv f x = e_inv f y)) _ (x = y)).
+  - unshelve eapply (IHn (Box (e_inv f x = e_inv f y)) _ (Box (x = y))).
     + apply IsTrunc0. 
-    + apply ap_inv_equiv. apply isequiv_inverse. 
-    + exact (@isequiv_inverse _ _ (ap (e_inv f)) (isequiv_ap B A (e_inv f))).
+    + intros [e]. eapply box. unshelve eapply (ap_inv_equiv (e_inv f) _ _ e).
+      apply isequiv_inverse. 
+    + unshelve econstructor.
+      * intros [e]. exact (box (ap (e_inv f) e)).
+      * intros [e]. reflexivity.
+      * intros [e]. reflexivity. 
 Defined.
+
+Definition Box_equiv (A B : SProp) (e : A <-> B) : Equiv (Box A) (Box B).
+Proof.
+  unshelve econstructor.
+  - intros [a]. exact (box (Sfst e a)). 
+  - unshelve econstructor.
+    + intros [b]. exact (box (Ssnd e b)).
+    + intros [a]. reflexivity. 
+    + intros [b]. reflexivity. 
+Defined.
+
+Definition Box_forall (A:Type) (B: A -> SProp) :
+  Equiv (forall a:A, Box (B a)) (Box (forall a:A, B a)).
+Proof.
+  unshelve econstructor.
+  - intro f. apply box. intros a. exact (match f a with box b => b end). 
+  - unshelve econstructor.
+    * intros f a. apply box. exact (match f with box g => g a end). 
+    * intro f. apply funext. intro a. destruct (f a). reflexivity.
+    * intros [f]. reflexivity.
+Defined. 
 
 Definition IsTrunc_Forall {funext:Funext} A (B : A -> Type) n
            (H : forall x, IsTrunc n (B x)) : IsTrunc n (forall x, B x).
@@ -224,29 +182,29 @@ Proof.
   - unshelve econstructor.
     + intro a. apply (H a).1.
     + intro f. apply funext. intro a. apply (H a).2.
-  - intros f g. cbn in H. unshelve eapply (trunc_equiv _ _ _ (e_inv (apD10))). 
-    + auto.
-    + apply IHn. cbn in H. intro a. exact (H a (f a) (g a)). 
+  - intros f g. cbn in H. pose (Box_equiv (f = g) (f == g) (@apD10 _ _ f g  ,, funext _ _ f g )).
+    unshelve refine (trunc_equiv _ (Box (f == g)) _ _).
+    exact (e.(e_inv)). 
+    + unshelve refine (trunc_equiv _ (forall a, Box (f a = g a)) _ _).
+      exact (e_fun (Box_forall _ _)).
+      eapply IHn. intro a. exact (H a (f a) (g a)).
+      exact (@e_isequiv _ _ (Box_forall _ _)).
     + apply isequiv_inverse.
-Defined. 
-
+Defined.
 
 (*** lemma needing this file ***)
 
 (* lemma needing funext *)
 
-Definition ForallSigma {A : Type} {P : A -> Type} {Q : forall a:A, forall y:P a, Type} :
-  Equiv (forall (a:A) (y:P a), Q a y) (forall z:{a:A & P a}, Q (z.1) (z.2)).
+Definition ForallSigma {A : Type} {P : A -> SProp} {Q : forall a:A, forall y:P a, SProp} :
+  (forall (a:A) (y:P a), Q a y) <-> (forall z:{a:A & P a}, Q (z.1) (z.2)).
 Proof.
   unshelve econstructor.
   * intro F. intro z. exact (F z.1 z.2).
-  * unshelve eapply isequiv_adjointify.
-    - intro G. intros a y. exact (G (a;y)).
-    - intro F; cbn. reflexivity.
-    - intro G; cbn. apply funext; intro z.
-      destruct z as [a y]; cbn. reflexivity.
+  * intro G. intros a y. exact (G (a;y)).
 Defined.
 
+(*
 Definition SigmaSigma {A:Type} (B: A -> Type) {Q : forall (a:A) (b:B a), Type} :
       Equiv ({a:A & {b: B a & Q a b}}) ({z:{a:A & B a} & Q z.1 z.2}).
 Proof.
@@ -257,27 +215,23 @@ Proof.
     -- intros [a [b c]]. reflexivity.
     -- intros [[a b] c]. reflexivity.
 Defined.
+ *)
 
-Definition EquivPtype {A : Type} {B B' : A -> Type} (h : forall (a:A), Equiv (B a) (B' a)) :
-  Equiv (forall a, B a) (forall a, B' a).
+Definition EquivPtype {A : Type} {B B' : A -> SProp}
+           (h : forall (a:A), (B a) <-> (B' a)) :
+  (forall a, B a) <-> (forall a, B' a).
 Proof.
-  unshelve econstructor.
-  + intro f. intro a. exact ((e_fun (h a)) (f a)).
-  + unshelve eapply isequiv_adjointify.
-    - intro g. intro a. destruct (h a) as [e_fun hae]. destruct hae.
-      exact (e_inv (g a)).
-    - intro f. apply funext; intro a.
-      destruct (h a) as [e_fun hae]; destruct hae; cbn. apply e_sect.
-      - intro g. apply funext; intro a.
-      destruct (h a) as [e_fun hae]; destruct hae; cbn. apply e_retr.
+  unshelve econstructor; intros f a; destruct (h a); auto. 
 Defined.
-
+ 
 (* Lemmas using IsContr *)
-Instance IsContr_True : IsContr True.
+
+Instance IsContr_Box {A:SProp} : A -> IsContr (Box A).
 Proof.
-  unshelve econstructor. exact I.
-  intro y; destruct y; reflexivity.
+  intro a; exists (box a). intro y; destruct y; reflexivity.
 Defined.
+
+Instance IsContr_True : IsContr (Box STrue) := IsContr_Box SI. 
 
 Instance IsContr_unit : IsContr unit.
 Proof.
@@ -293,7 +247,7 @@ Definition IsContrMap {A B : Type} (f : A -> B) :=
 
 Definition IsContrMap_IsShae {A B} (f:A->B) : IsContrMap f -> IsEquiv f.
 Proof.
-  intro H. unshelve eapply isequiv_adjointify.
+  intro H. unshelve econstructor.
   - intro b. exact (((H b).1).1).
   - intro a. exact (((H (f a)).2 (a; eq_refl))..1).
   - intro b. exact (((H b) .1) .2). 
@@ -302,61 +256,46 @@ Defined.
 Definition IsContrSingleton_r {A:Type} {a:A} : IsContr {a':A & a = a'}.
 Proof.
     refine ((a; eq_refl);_); intros [a' p].
-    apply path_sigma_uncurried; unshelve econstructor; cbn.
-    exact p. apply transport_paths_r.
+    apply path_sigma_uncurried.
+    exact p.
 Defined.
 
 Definition IsContrSingleton_l {A:Type} {a:A} : IsContr {a':A & a' = a}.
 Proof.
     refine ((a; eq_refl);_); intros [a' p].
-    apply path_sigma_uncurried; unshelve econstructor; cbn.
-    exact p^. rewrite transport_paths_l. rewrite concat_refl. apply inv2.
+    apply path_sigma_uncurried.
+    exact p^.
 Defined.
 
-Definition IsContrForall_domain {A : Type} {B : A -> Type} (C : IsContr A) :
-  Equiv (forall a : A, B a) (B C.1).
+Definition IsContrForall_domain {A : Type} {B : A -> SProp} (C : IsContr A) :
+  (forall a : A, B a) <-> (B C.1).
 Proof.
   unshelve econstructor.
   + intro h. exact (h C.1).
-  + unshelve eapply isequiv_adjointify.
-    - intros y a. exact ((C.2 a) # y).
-    - intro h. apply funext; intro a. destruct (C.2 a); cbn. reflexivity.
-    - intro y. cbn. rewrite (@path2_contr _ C _ _ (C.2 C.1) eq_refl).
-      cbn. reflexivity.
+  + intros y a. pose (C.2 a). exact (transport_eq B e y).
 Defined.
 
-Definition IsContrForall_codomain {A : Type} {B : A -> Type} (C : forall a:A, IsContr(B a)) :
-Equiv (forall a : A, B a) True.
-Proof.
-  unshelve econstructor.
-  - intro f; exact I.
-  - unshelve eapply isequiv_adjointify.
-    -- intro r. intro a. exact ((C a).1).
-    -- intro f. cbn. apply funext; intro a. exact ((C a).2 (f a)).
-    -- intro r; destruct r. reflexivity.
-Defined.
-  
-Definition IsContrSigma_domain {A : Type} {B : A -> Type} (C : IsContr A) :
-      Equiv {a:A & B a} (B C.1).
-Proof.
-  unshelve econstructor.
-  - intros [a b]. exact ((C.2 a)^ # b).
-  - unshelve eapply isequiv_adjointify.
-    -- intro b. exact (C.1; b).
-    -- intros [a b]. apply path_sigma_uncurried; unshelve econstructor; cbn.
-       exact (C.2 a). apply transport_pV.
-    -- intro x. cbn beta zeta iota.
-        assert (C.2 C.1 = eq_refl). apply path2_contr.
-        rewrite X. reflexivity. 
-Defined. 
+(* Definition IsContrSigma_domain {A : Type} {B : A -> Type} (C : IsContr A) : *)
+(*       Equiv {a:A & B a} (B C.1). *)
+(* Proof. *)
+(*   unshelve econstructor. *)
+(*   - intros [a b]. exact ((C.2 a)^ # b). *)
+(*   - unshelve eapply isequiv_adjointify. *)
+(*     -- intro b. exact (C.1; b). *)
+(*     -- intros [a b]. apply path_sigma_uncurried; unshelve econstructor; cbn. *)
+(*        exact (C.2 a). apply transport_pV. *)
+(*     -- intro x. cbn beta zeta iota. *)
+(*         assert (C.2 C.1 = eq_refl). apply path2_contr. *)
+(*         rewrite X. reflexivity.  *)
+(* Defined.  *)
 
-Definition IsContrSigma_codomain {A : Type} {B : A -> Type} (C :forall a :A, IsContr(B a)) :
-  Equiv {a : A & B a} A.
-  unshelve econstructor.
-  - intros [a b]. exact a.
-  - unshelve eapply isequiv_adjointify.
-    -- intro a. unshelve econstructor. exact a. exact ((C a).1).
-    -- intros [a b]. eapply EqSigma. unshelve econstructor; cbn. reflexivity.
-       cbn. exact ((C a).2 b).
-    -- cbn. reflexivity.
-Defined.
+(* Definition IsContrSigma_codomain {A : Type} {B : A -> Type} (C :forall a :A, IsContr(B a)) : *)
+(*   Equiv {a : A & B a} A. *)
+(*   unshelve econstructor. *)
+(*   - intros [a b]. exact a. *)
+(*   - unshelve eapply isequiv_adjointify. *)
+(*     -- intro a. unshelve econstructor. exact a. exact ((C a).1). *)
+(*     -- intros [a b]. eapply EqSigma. unshelve econstructor; cbn. reflexivity. *)
+(*        cbn. exact ((C a).2 b). *)
+(*     -- cbn. reflexivity. *)
+(* Defined. *)
