@@ -64,6 +64,12 @@ Definition eq_to_equiv_P (A B:Prop) : A = B -> A ≃ B :=
              
 Axiom univalence_P : forall (A B:Prop), IsEquiv (eq_to_equiv_P A B).
 
+Definition UnivP {A B : Prop} : Equiv (A = B) (Equiv A B).
+Proof.
+  unshelve econstructor. apply eq_to_equiv_P. apply univalence_P.
+Defined. 
+
+
 
 Definition transport_sigma_1 A (P : A -> Type) Q x y (e : x = y) X :
   (transport_eq (fun x => {y : P x & Q x y}) e X).1  =

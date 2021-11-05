@@ -36,6 +36,23 @@ Defined.
 Check (eq_refl : ↑ nat = nat).
 
 (* ########################################################### *)
+(* ###                      Prop ⋈ Prop                    ### *)
+(* ########################################################### *)
+
+Instance FR_Prop_def : Rel Prop Prop := FR_Type.
+
+Instance FP_Prop : Prop ⋈ Prop.
+Proof.
+  econstructor. unfold rel. unshelve econstructor => [A|B].
+  + eapply (contr_equiv2 {B:Prop & A = B}). 2: apply IsContrSingleton_r.
+    apply EquivSigma; intro B. apply (@equiv_compose _ (Equiv A B) _).
+    apply UnivP. apply Equiv_Equiv_FR_Type.
+  + eapply (contr_equiv2 {A:Prop & A = B}). 2: apply IsContrSingleton_l.
+    apply EquivSigma; intro A. apply (@equiv_compose _ (Equiv A B) _).
+    apply UnivP. apply Equiv_Equiv_FR_Type.
+Defined.
+
+(* ########################################################### *)
 (* ###                 Π(a:A) B ⋈ Π(a':A') B'              ### *)
 (* ########################################################### *)
 
